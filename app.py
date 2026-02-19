@@ -21,7 +21,6 @@ WEATHER_SERVICE_KEY = "bf760b16081f482bf9e4640acf9ac58a8a1af754506c38c6610f255c5
 KAKAO_REST_KEY = os.getenv("KAKAO_REST_KEY", "0289d2c55211ef38b3c9aab4a01918cc").strip()
 
 # ---- AI 시인 LLM (CTransformers / llama-2) ----
-# 모델 파일이 없거나 로딩에 실패해도 앱 전체가 죽지 않도록 안전 처리
 _poet_llm = None
 
 def get_poet_llm():
@@ -55,7 +54,6 @@ def build_simple_warning(summary: dict) -> str:
     t1h = summary.get("T1H")
     rn1 = summary.get("RN1")
     sky = summary.get("SKY")
-
     try:
         if t1h is not None:
             t = float(t1h)
@@ -65,7 +63,6 @@ def build_simple_warning(summary: dict) -> str:
                 msgs.append("폭염 주의")
     except Exception:
         pass
-
     try:
         if rn1 is not None:
             r = float(rn1)
@@ -75,10 +72,8 @@ def build_simple_warning(summary: dict) -> str:
                 msgs.append("비/눈 주의")
     except Exception:
         pass
-
     if sky == "4":
         msgs.append("짙은 구름·흐림")
-
     return " · ".join(msgs) if msgs else "특보 없음(간단 판정)"
 
 
@@ -86,18 +81,12 @@ def fetch_wthr_wrn_list(stn_id: str = "108", days: int = 3):
     now_kst = datetime.utcnow() + timedelta(hours=9)
     to_date = now_kst.strftime("%Y%m%d")
     from_date = (now_kst - timedelta(days=days)).strftime("%Y%m%d")
-
     url = "http://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnList"
     params = {
         "serviceKey": WEATHER_SERVICE_KEY,
-        "pageNo": 1,
-        "numOfRows": 50,
-        "dataType": "JSON",
-        "stnId": stn_id,
-        "fromTmFc": from_date,
-        "toTmFc": to_date,
+        "pageNo": 1, "numOfRows": 50, "dataType": "JSON",
+        "stnId": stn_id, "fromTmFc": from_date, "toTmFc": to_date,
     }
-
     try:
         r = requests.get(url, params=params, timeout=5)
         r.raise_for_status()
@@ -143,45 +132,29 @@ def seoul_openapi_xml(service_name: str, start: int, end: int, *path_parts):
 
 
 # =========================================================
-# 라우트: 메인 페이지
+# 라우트
 # =========================================================
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-# =========================================================
-# 라우트: AI 시인 페이지
-# =========================================================
 @app.route("/poet")
 def poet_page():
     return render_template("poet.html")
 
 
 # =========================================================
-# API: AI 시인 - 시 생성
+# API: AI 시인
 # =========================================================
 @app.route("/api/poet/generate", methods=["POST"])
 def poet_generate():
-    """
-    POST /api/poet/generate
-    body: { "topic": "봄" }
-    returns: { "success": true, "poem": "..." }
-    """
     data = request.get_json(force=True, silent=True) or {}
     topic = (data.get("topic") or "").strip()
-
     if not topic:
         return jsonify({"success": False, "error": "시의 주제를 입력해주세요."}), 400
-
     llm = get_poet_llm()
     if llm is None:
-        return jsonify({
-            "success": False,
-            "error": "AI 시인 모델을 불러오지 못했습니다. "
-                     "llama-2-7b-chat.ggmlv3.q2_k.bin 파일이 서버에 있는지 확인하세요."
-        }), 503
-
+        return jsonify({"success": False, "error": "AI 시인 모델을 불러오지 못했습니다."}), 503
     try:
         prompt = (
             f"You are a Korean poet. Write a short, beautiful Korean poem about the topic: '{topic}'. "
@@ -190,8 +163,7 @@ def poet_generate():
         result = llm.invoke(prompt)
         return jsonify({"success": True, "poem": result.strip()})
     except Exception as e:
-        print("[POET] generate error:", e)
-        return jsonify({"success": False, "error": f"시 생성 중 오류가 발생했습니다: {e}"}), 500
+        return jsonify({"success": False, "error": f"시 생성 중 오류: {e}"}), 500
 
 
 # =========================================================
@@ -207,54 +179,38 @@ def weather():
     base_date, base_time = get_ultra_base_datetime()
     ultra_url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst"
     ultra_params = {
-        "serviceKey": WEATHER_SERVICE_KEY,
-        "dataType": "JSON",
-        "numOfRows": 60,
-        "pageNo": 1,
-        "base_date": base_date,
-        "base_time": base_time,
-        "nx": nx,
-        "ny": ny,
+        "serviceKey": WEATHER_SERVICE_KEY, "dataType": "JSON",
+        "numOfRows": 60, "pageNo": 1,
+        "base_date": base_date, "base_time": base_time, "nx": nx, "ny": ny,
     }
-
     try:
         r = requests.get(ultra_url, params=ultra_params, timeout=5)
         r.raise_for_status()
         data = r.json()
-
         header = data.get("response", {}).get("header", {})
         if header.get("resultCode") not in (None, "00"):
             return jsonify({"success": False, "error": header.get("resultMsg", "기상청 응답 오류")}), 502
-
         items = data["response"]["body"]["items"]["item"]
         if not items:
             return jsonify({"success": False, "error": "기상 데이터가 비어있습니다."}), 502
-
         items_sorted = sorted(items, key=lambda x: x.get("fcstTime", "9999"))
         first_time = items_sorted[0]["fcstTime"]
         same_time = [it for it in items_sorted if it.get("fcstTime") == first_time]
-
         summary = {it.get("category"): it.get("fcstValue") for it in same_time}
         simple_warning = build_simple_warning(summary)
         official_warnings = fetch_wthr_wrn_list(stn_id="108", days=3)
-
         if official_warnings:
             titles = [w.get("title") for w in official_warnings if w.get("title")]
             warning_text = " / ".join(titles[:3]) if titles else simple_warning
         else:
             warning_text = simple_warning
-
         return jsonify({
             "success": True,
             "nx": int(nx), "ny": int(ny),
-            "baseDate": base_date, "baseTime": base_time,
-            "fcstTime": first_time,
-            "T1H": summary.get("T1H"),
-            "RN1": summary.get("RN1"),
-            "SKY": summary.get("SKY"),
-            "REH": summary.get("REH"),
-            "VEC": summary.get("VEC"),
-            "warning": warning_text,
+            "baseDate": base_date, "baseTime": base_time, "fcstTime": first_time,
+            "T1H": summary.get("T1H"), "RN1": summary.get("RN1"),
+            "SKY": summary.get("SKY"), "REH": summary.get("REH"),
+            "VEC": summary.get("VEC"), "warning": warning_text,
             "warnings": official_warnings,
         })
     except Exception as e:
@@ -273,7 +229,6 @@ def kakao_coord2addr():
         return jsonify({"success": False, "error": "lat, lng 파라미터가 필요합니다."}), 400
     if not KAKAO_REST_KEY:
         return jsonify({"success": False, "error": "KAKAO_REST_KEY 미설정"}), 500
-
     url = "https://dapi.kakao.com/v2/local/geo/coord2address.json"
     try:
         r = requests.get(url, headers={"Authorization": f"KakaoAK {KAKAO_REST_KEY}"},
@@ -325,10 +280,10 @@ def pmis_work_terms():
             if not rows:
                 continue
             row0 = rows[0]
-            cur_term = pick_from_row(row0, ["CUR_TERM", "CURRENT_TERM", "THIS_TERM", "WK_TERM"])
-            cur_cn   = pick_from_row(row0, ["CUR_WOK_CN", "CUR_CN", "WK_CN", "CURRENT_CN"])
-            nxt_term = pick_from_row(row0, ["NXT_TERM", "NEXT_TERM", "TERM_NEXT"])
-            nxt_cn   = pick_from_row(row0, ["NXT_WOK_CN", "NXT_CN", "NEXT_CN"])
+            cur_term = pick_from_row(row0, ["NOW_WEEK"])
+            cur_cn   = pick_from_row(row0, ["WORK_NOW"])
+            nxt_term = pick_from_row(row0, ["NEXT_WEEK"])
+            nxt_cn   = pick_from_row(row0, ["WORK_NEXT"])
             current_text = " / ".join([x for x in [cur_term, cur_cn] if x]) or None
             next_text    = " / ".join([x for x in [nxt_term, nxt_cn] if x]) or None
             code_el = root.find(".//CODE")
@@ -351,6 +306,30 @@ def pmis_work_terms():
 
 
 # =========================================================
+# 공정사진 디버그 (실제 태그명 확인용)
+# =========================================================
+@app.route("/pmis/debug_photos")
+def pmis_debug_photos():
+    """
+    브라우저에서 /pmis/debug_photos?pjt_cd=XXXX 로 접속하면
+    실제 XML 태그명과 값을 모두 보여줌
+    """
+    pjt_cd = request.args.get("pjt_cd", "").strip()
+    if not pjt_cd:
+        return jsonify({"success": False, "error": "pjt_cd 필요"}), 400
+    try:
+        xml_text, url = seoul_openapi_xml("pmisPjtPhoto", 1, 10, pjt_cd)
+        root = ET.fromstring(xml_text)
+        rows = root.findall(".//row")
+        raw = []
+        for row in rows[:3]:  # 처음 3개만
+            raw.append({child.tag: child.text for child in row})
+        return jsonify({"success": True, "url": url, "row_count": len(rows), "sample_rows": raw})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 502
+
+
+# =========================================================
 # 공정사진
 # =========================================================
 @app.route("/pmis/photos")
@@ -364,19 +343,32 @@ def pmis_photos():
         root = ET.fromstring(xml_text)
         rows = root.findall(".//row")
 
+        # ✅ 실제 태그명 콘솔 출력 (디버그용)
+        if rows:
+            all_tags = {child.tag: (child.text or "").strip() for child in rows[0]}
+            print("[DEBUG photo tags]", all_tags)
+
         photos = []
         for r in rows:
             def t(tag):
                 el = r.find(tag)
                 return (el.text or "").strip() if el is not None else ""
+
+            # ✅ 실제 태그명 적용 (PIC_URL, CONST_NAME, PHTGRP_DATE)
             photos.append({
-                "seq": t("SEQ"), "pjt_cd": t("PJT_CD"), "pjt_name": t("PJT_NAME"),
-                "photo_seq": t("PHOTO_SEQ"), "photo_url": t("PHOTO_URL"),
-                "photo_name": t("PHOTO_NAME"), "shot_date": t("SHOT_DATE"),
+                "seq":        t("SEQ"),
+                "pjt_cd":     t("PJT_CD"),
+                "pjt_name":   t("PJT_NAME"),
+                "photo_seq":  t("PHOTO_SEQ"),
+                "photo_url":  t("PIC_URL"),
+                "photo_name": t("CONST_NAME"),
+                "shot_date":  t("PHTGRP_DATE"),
             })
 
-        return jsonify({"success": True, "pjt_cd": pjt_cd,
-                        "count": len(photos), "photos": photos, "source": url})
+        return jsonify({
+            "success": True, "pjt_cd": pjt_cd,
+            "count": len(photos), "photos": photos, "source": url
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 502
 
@@ -427,85 +419,54 @@ def pmis_debug_work_terms():
 
 
 # =========================================================
-# ChatPDF 페이지
+# ChatPDF
 # =========================================================
 @app.route("/chatpdf")
 def chatpdf_page():
     return render_template("chatpdf.html")
 
 
-# =========================================================
-# API: PDF 업로드 → Chroma 벡터스토어 생성
-# =========================================================
 @app.route("/api/chatpdf/upload", methods=["POST"])
 def chatpdf_upload():
-    """
-    POST /api/chatpdf/upload  (multipart/form-data, field: file)
-    returns: { "success": true, "session_id": "..." }
-    """
     if "file" not in request.files:
         return jsonify({"success": False, "error": "파일이 없습니다."}), 400
-
     f = request.files["file"]
     if not f.filename.lower().endswith(".pdf"):
         return jsonify({"success": False, "error": "PDF 파일만 업로드할 수 있습니다."}), 400
-
     try:
         from dotenv import load_dotenv
         load_dotenv()
-
         from langchain_community.document_loaders import PyPDFLoader
         from langchain_text_splitters import RecursiveCharacterTextSplitter
         from langchain_community.vectorstores import Chroma
         from langchain_openai import OpenAIEmbeddings
 
-        # 임시 파일에 저장
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             f.save(tmp.name)
             tmp_path = tmp.name
 
-        # PDF 로드 & 분할
         loader = PyPDFLoader(tmp_path)
         pages  = loader.load_and_split()
-
         splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=20)
         texts    = splitter.split_documents(pages)
 
-        # 벡터스토어 생성
         session_id = str(uuid.uuid4())
         persist_dir = os.path.join(tempfile.gettempdir(), f"chroma_{session_id}")
-
-        db = Chroma.from_documents(
-            texts,
-            OpenAIEmbeddings(),
-            persist_directory=persist_dir,
-        )
+        db = Chroma.from_documents(texts, OpenAIEmbeddings(), persist_directory=persist_dir)
         _chatpdf_sessions[session_id] = db.as_retriever()
-
-        os.unlink(tmp_path)   # 임시 파일 삭제
+        os.unlink(tmp_path)
 
         return jsonify({
-            "success": True,
-            "session_id": session_id,
-            "page_count": len(pages),
-            "chunk_count": len(texts),
+            "success": True, "session_id": session_id,
+            "page_count": len(pages), "chunk_count": len(texts),
         })
-
     except Exception as e:
         print("[ChatPDF upload error]", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# =========================================================
-# API: 질문 → RAG 답변
-# =========================================================
 @app.route("/api/chatpdf/ask", methods=["POST"])
 def chatpdf_ask():
-    """
-    POST /api/chatpdf/ask
-    body: { "session_id": "...", "question": "..." }
-    returns: { "success": true, "answer": "..." }
-    """
     data       = request.get_json(force=True, silent=True) or {}
     session_id = (data.get("session_id") or "").strip()
     question   = (data.get("question")   or "").strip()
@@ -522,7 +483,6 @@ def chatpdf_ask():
     try:
         from dotenv import load_dotenv
         load_dotenv()
-
         from langchain_openai import ChatOpenAI
         from langchain_core.runnables import RunnablePassthrough
         from langchain_core.prompts import ChatPromptTemplate
@@ -535,16 +495,13 @@ def chatpdf_ask():
 {question}
 """)
         llm = ChatOpenAI(model="gpt-4o", temperature=0)
-
         rag_chain = (
             {"context": retriever, "question": RunnablePassthrough()}
             | prompt_template
             | llm
         )
-
         result = rag_chain.invoke(question)
         return jsonify({"success": True, "answer": result.content})
-
     except Exception as e:
         print("[ChatPDF ask error]", e)
         return jsonify({"success": False, "error": str(e)}), 500

@@ -28,7 +28,6 @@
       gap: 16px;
     }
     .header-right .today-label { font-size: 12px; opacity: 0.9; }
-    /* ✅ AI 시인 링크 버튼 */
     .poet-link {
       display: inline-flex;
       align-items: center;
@@ -196,6 +195,7 @@
       background: transparent !important;
     }
 
+    /* ── 공정사진 ── */
     #photo-grid .photo-item{
       border: 1px solid #e5e7eb;
       border-radius: 10px;
@@ -245,6 +245,24 @@
       text-decoration:none;
     }
     #photo-grid .photo-actions a:hover{ text-decoration:underline; }
+
+    /* 사진 로딩 스피너 */
+    .photo-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #6b7280;
+      padding: 8px 0;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -254,9 +272,7 @@
       <div class="sub">서울시 공공데이터(건설 프로젝트)를 기반으로 한 내부용 대시보드</div>
     </div>
     <div class="header-right">
-      <!-- ✅ ChatPDF 페이지 링크 -->
       <a class="poet-link" href="/chatpdf">📄 ChatPDF</a>
-      <!-- ✅ AI 시인 페이지 링크 -->
       <a class="poet-link" href="/poet">✍️ AI 시인</a>
       <span class="today-label">오늘 기준&nbsp;<span id="today"></span></span>
     </div>
@@ -388,13 +404,14 @@
             </div>
           </div>
 
-          <div class="card" id="photo-card" style="grid-column: 1 / -1; display:none;">
-            <div class="card-title">공정사진</div>
+          <!-- ✅ 공정사진: 항상 표시, 프로젝트 선택 시 자동 로드 -->
+          <div class="card" id="photo-card" style="grid-column: 1 / -1;">
+            <div class="card-title">📸 공정사진</div>
             <div id="photo-status" style="font-size:11px; color:#6b7280;">
-              공정사진 탭을 누르면 사진을 불러옵니다.
+              프로젝트를 선택하면 공정사진을 자동으로 불러옵니다.
             </div>
             <div id="photo-grid"
-                 style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:10px;">
+                 style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:12px;">
             </div>
           </div>
 
@@ -533,8 +550,8 @@
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
         if (!data.success) { currentBox.textContent = "당기 정보 없음"; nextBox.textContent = "차기 정보 없음"; return; }
-        currentBox.textContent = data.current || "당기 정보 없음";
-        nextBox.textContent    = data.next    || "차기 정보 없음";
+        currentBox.innerHTML = data.current || "당기 정보 없음";
+        nextBox.innerHTML    = data.next    || "차기 정보 없음";
       } catch (e) {
         console.error("work_terms error:", e);
         currentBox.textContent = "당기 정보 로딩 실패";
@@ -547,8 +564,6 @@
       document.querySelectorAll(".tabs .tab").forEach(t => t.classList.remove("active"));
       const tab = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
       if (tab) tab.classList.add("active");
-      const photoCard = document.getElementById("photo-card");
-      if (photoCard) photoCard.style.display = (tabName === "photos") ? "block" : "none";
     }
 
     function safeText(s) { return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -558,7 +573,8 @@
       const gridEl   = document.getElementById("photo-grid");
       if (!statusEl || !gridEl) return;
 
-      statusEl.textContent = "사진 불러오는 중...";
+      // 로딩 스피너 표시
+      statusEl.innerHTML = `<div class="photo-loading"><div class="spinner"></div> 공정사진 불러오는 중...</div>`;
       gridEl.innerHTML = "";
 
       try {
@@ -581,13 +597,13 @@
           item.innerHTML = `
             <div class="photo-thumb">
               <img src="${url}" alt="${safeText(name)}" loading="lazy"
-                   onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;font-size:11px;color:#6b7280;&quot;>이미지 로드 실패</div>';" />
+                   onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;font-size:11px;color:#6b7280;padding:8px;&quot;>이미지 로드 실패</div>';" />
             </div>
             <div class="photo-meta">
               <div class="photo-name" title="${safeText(name)}">${safeText(name)}</div>
-              <div class="photo-date">${safeText(date)}</div>
+              <div class="photo-date">📅 ${safeText(date)}</div>
               <div class="photo-actions">
-                <a href="${url}" target="_blank" rel="noopener">원본보기</a>
+                <a href="${url}" target="_blank" rel="noopener">원본보기 🔗</a>
               </div>
             </div>`;
           item.addEventListener("click", (e) => {
@@ -721,7 +737,6 @@
       });
     }
 
-    // 서울 25개 구 하드코딩 폴백 (CSV 파싱 실패 시 사용)
     const SEOUL_GU_FALLBACK = {
       "종로구":  { lat:37.5730, lon:126.9794 }, "중구":    { lat:37.5641, lon:126.9979 },
       "용산구":  { lat:37.5311, lon:126.9810 }, "성동구":  { lat:37.5636, lon:127.0369 },
@@ -739,7 +754,6 @@
     };
 
     async function loadGeoData() {
-      // 항상 하드코딩 폴백으로 먼저 초기화
       GEO_BY_GU = { ...SEOUL_GU_FALLBACK };
       try {
         const res = await fetch("/seoul_gu_geo.csv");
@@ -755,15 +769,12 @@
           const lonRaw = row["경도"] || row["lon"] || row["LON"] || row["경도(초/10)"] || row["경도(초/100)"] || row["X"] || "";
           const lat = parseFloat(latRaw);
           const lon = parseFloat(lonRaw);
-          // 서울 범위 검증
           if (isNaN(lat) || isNaN(lon) || lat < 37.0 || lat > 38.0 || lon < 126.0 || lon > 128.0) return;
           map[gu] = { lat, lon };
         });
         GEO_BY_GU = map;
-        console.log("[loadGeoData] 완료:", Object.keys(GEO_BY_GU));
       } catch (e) {
         console.warn("[loadGeoData] CSV 실패, 하드코딩 폴백 사용:", e);
-        // GEO_BY_GU는 이미 SEOUL_GU_FALLBACK으로 초기화됨
       }
     }
 
@@ -874,14 +885,14 @@
       loadWorkTerms((p.code || "").trim());
       updateKakaoMap(p);
 
+      // ✅ 프로젝트 선택 시 공정사진 자동 로드
       currentProjectCode = (p.code || "").trim();
-      photoLoadedFor = null;
-      setActiveTab("overview");
+      if (currentProjectCode && photoLoadedFor !== currentProjectCode) {
+        photoLoadedFor = currentProjectCode;
+        loadPhotos(currentProjectCode);
+      }
 
-      const statusEl = document.getElementById("photo-status");
-      const gridEl   = document.getElementById("photo-grid");
-      if (statusEl) statusEl.textContent = "공정사진 탭을 누르면 사진을 불러옵니다.";
-      if (gridEl)   gridEl.innerHTML = "";
+      setActiveTab("overview");
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -889,6 +900,7 @@
       await loadGeoData();
       await loadProjects();
 
+      // 탭 클릭 시에도 사진 탭 선택 가능 (이미 로드됐으면 재로드 안 함)
       document.querySelectorAll(".tabs .tab").forEach(tab => {
         tab.addEventListener("click", async () => {
           setActiveTab(tab.dataset.tab);
