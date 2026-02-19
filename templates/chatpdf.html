@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>ChatPDF – 건설알림이 대시보드</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-header {
+      background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+    .app-header h1 { font-size: 18px; margin: 0; }
+    .app-header a {
+      font-size: 13px; color: rgba(255,255,255,0.85);
+      text-decoration: none; padding: 6px 14px;
+      border: 1px solid rgba(255,255,255,0.4); border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .app-header a:hover { background: rgba(255,255,255,0.15); }
+
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── 왼쪽: 업로드 패널 ── */
+    .upload-panel {
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .panel-title {
+      font-size: 15px; font-weight: 700; color: #111827;
+    }
+    .drop-zone {
+      border: 2px dashed #93c5fd;
+      border-radius: 12px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      background: #f0f9ff;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      background: #dbeafe; border-color: #3b82f6;
+    }
+    .drop-zone .icon { font-size: 36px; margin-bottom: 8px; }
+    .drop-zone .hint { font-size: 13px; color: #6b7280; margin-top: 6px; }
+    #file-input { display: none; }
+
+    .file-info {
+      background: #f9fafb; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 12px 14px;
+      font-size: 13px; display: none;
+    }
+    .file-info .fname { font-weight: 700; word-break: break-all; }
+    .file-info .fmeta { color: #6b7280; font-size: 11px; margin-top: 4px; }
+
+    .upload-btn {
+      width: 100%; padding: 12px;
+      background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
+      color: white; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .upload-status {
+      font-size: 12px; color: #6b7280; text-align: center;
+      min-height: 20px;
+    }
+    .upload-status.ok  { color: #15803d; }
+    .upload-status.err { color: #b91c1c; }
+
+    .pdf-stats {
+      display: none;
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 10px; padding: 12px 14px;
+      font-size: 12px; color: #15803d;
+      line-height: 1.8;
+    }
+
+    /* ── 오른쪽: 채팅 패널 ── */
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .msg {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: #1d4ed8; color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .msg.bot.thinking {
+      color: #9ca3af; font-style: italic;
+    }
+    .msg-label {
+      font-size: 10px; color: #9ca3af; margin-bottom: 4px;
+    }
+
+    .chat-empty {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 8px;
+      color: #9ca3af; font-size: 14px;
+    }
+    .chat-empty .big { font-size: 48px; }
+
+    .chat-input-row {
+      padding: 14px 20px;
+      border-top: 1px solid #e5e7eb;
+      background: #ffffff;
+      display: flex; gap: 10px;
+    }
+    .chat-input {
+      flex: 1; padding: 12px 16px;
+      border: 1.5px solid #d1d5db; border-radius: 10px;
+      font-size: 14px; outline: none; resize: none;
+      font-family: inherit; line-height: 1.5;
+      transition: border-color 0.15s;
+    }
+    .chat-input:focus { border-color: #2563eb; }
+    .chat-input:disabled { background: #f9fafb; }
+
+    .send-btn {
+      padding: 12px 20px;
+      background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
+      color: white; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      white-space: nowrap; transition: opacity 0.15s;
+    }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .upload-panel { border-right: none; border-bottom: 1px solid #e5e7eb; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h1>📄 ChatPDF – PDF에게 질문하세요</h1>
+    <a href="/">← 대시보드로 돌아가기</a>
+  </header>
+
+  <div class="main">
+    <!-- 왼쪽: 업로드 -->
+    <div class="upload-panel">
+      <div class="panel-title">📂 PDF 업로드</div>
+
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">📑</div>
+        <div><strong>PDF 파일을 클릭하거나 드래그하세요</strong></div>
+        <div class="hint">최대 50MB · PDF 형식만 가능</div>
+      </div>
+      <input type="file" id="file-input" accept=".pdf" />
+
+      <div class="file-info" id="file-info">
+        <div class="fname" id="file-name"></div>
+        <div class="fmeta" id="file-meta"></div>
+      </div>
+
+      <button class="upload-btn" id="upload-btn" disabled onclick="uploadPdf()">
+        🚀 분석 시작
+      </button>
+
+      <div class="upload-status" id="upload-status">PDF를 선택하면 분석을 시작할 수 있습니다.</div>
+
+      <div class="pdf-stats" id="pdf-stats"></div>
+    </div>
+
+    <!-- 오른쪽: 채팅 -->
+    <div class="chat-panel">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-empty" id="chat-empty">
+          <div class="big">💬</div>
+          <div>PDF를 업로드하면 질문할 수 있습니다</div>
+        </div>
+      </div>
+
+      <div class="chat-input-row">
+        <textarea
+          class="chat-input"
+          id="chat-input"
+          rows="2"
+          placeholder="PDF가 업로드되면 질문을 입력하세요..."
+          disabled
+        ></textarea>
+        <button class="send-btn" id="send-btn" disabled onclick="askQuestion()">
+          전송
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let sessionId = null;
+    let selectedFile = null;
+    let isBusy = false;
+
+    // ── 파일 선택 ──
+    document.getElementById("file-input").addEventListener("change", (e) => {
+      handleFileSelect(e.target.files[0]);
+    });
+
+    // ── 드래그앤드롭 ──
+    const dropZone = document.getElementById("drop-zone");
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const f = e.dataTransfer.files[0];
+      if (f) handleFileSelect(f);
+    });
+
+    // ── Enter 전송 (Shift+Enter = 줄바꿈) ──
+    document.getElementById("chat-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        askQuestion();
+      }
+    });
+
+    function handleFileSelect(file) {
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".pdf")) {
+        alert("PDF 파일만 업로드할 수 있습니다."); return;
+      }
+      selectedFile = file;
+
+      const fi = document.getElementById("file-info");
+      fi.style.display = "block";
+      document.getElementById("file-name").textContent = file.name;
+      document.getElementById("file-meta").textContent =
+        `크기: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+
+      document.getElementById("upload-btn").disabled = false;
+      setStatus("파일이 선택됐습니다. '분석 시작'을 눌러주세요.", "");
+    }
+
+    async function uploadPdf() {
+      if (!selectedFile || isBusy) return;
+      isBusy = true;
+
+      const btn = document.getElementById("upload-btn");
+      btn.disabled = true;
+      btn.textContent = "⏳ 분석 중...";
+      setStatus("PDF를 분석하는 중입니다...", "");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      try {
+        const res = await fetch("/api/chatpdf/upload", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error || "업로드 실패");
+
+        sessionId = data.session_id;
+
+        // 통계 표시
+        const stats = document.getElementById("pdf-stats");
+        stats.style.display = "block";
+        stats.innerHTML = `✅ 분석 완료<br>📄 페이지: ${data.page_count}쪽<br>🧩 청크: ${data.chunk_count}개`;
+
+        setStatus("분석 완료! 이제 질문할 수 있습니다.", "ok");
+
+        // 채팅 활성화
+        document.getElementById("chat-input").disabled = false;
+        document.getElementById("send-btn").disabled = false;
+        document.getElementById("chat-input").placeholder = "질문을 입력하고 Enter를 누르세요...";
+        document.getElementById("chat-input").focus();
+
+        // 빈 화면 제거, 환영 메시지
+        document.getElementById("chat-empty").remove();
+        appendMsg("bot", `📄 **${selectedFile.name}** 분석이 완료됐습니다.\n무엇이든 질문해보세요!`);
+
+        btn.textContent = "✅ 분석 완료";
+
+      } catch (e) {
+        setStatus("오류: " + e.message, "err");
+        btn.disabled = false;
+        btn.textContent = "🚀 분석 시작";
+      } finally {
+        isBusy = false;
+      }
+    }
+
+    async function askQuestion() {
+      if (!sessionId || isBusy) return;
+      const input = document.getElementById("chat-input");
+      const question = input.value.trim();
+      if (!question) return;
+
+      isBusy = true;
+      input.value = "";
+      input.disabled = true;
+      document.getElementById("send-btn").disabled = true;
+
+      appendMsg("user", question);
+
+      // 생각 중 표시
+      const thinkingId = "thinking-" + Date.now();
+      appendMsg("bot", "답변을 생성하는 중...", thinkingId, true);
+
+      try {
+        const res = await fetch("/api/chatpdf/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId, question }),
+        });
+        const data = await res.json();
+
+        // 생각 중 메시지 교체
+        const thinkEl = document.getElementById(thinkingId);
+        if (thinkEl) thinkEl.remove();
+
+        if (!data.success) throw new Error(data.error || "오류");
+        appendMsg("bot", data.answer);
+
+      } catch (e) {
+        const thinkEl = document.getElementById(thinkingId);
+        if (thinkEl) thinkEl.remove();
+        appendMsg("bot", "⚠️ 오류: " + e.message);
+      } finally {
+        isBusy = false;
+        input.disabled = false;
+        document.getElementById("send-btn").disabled = false;
+        input.focus();
+      }
+    }
+
+    function appendMsg(role, text, id, isThinking) {
+      const container = document.getElementById("chat-messages");
+
+      const wrap = document.createElement("div");
+      wrap.style.display = "flex";
+      wrap.style.flexDirection = "column";
+      wrap.style.alignItems = role === "user" ? "flex-end" : "flex-start";
+
+      const label = document.createElement("div");
+      label.className = "msg-label";
+      label.textContent = role === "user" ? "나" : "AI";
+      wrap.appendChild(label);
+
+      const bubble = document.createElement("div");
+      bubble.className = `msg ${role}${isThinking ? " thinking" : ""}`;
+      bubble.textContent = text;
+      if (id) bubble.id = id;
+      wrap.appendChild(bubble);
+
+      container.appendChild(wrap);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById("upload-status");
+      el.textContent = msg;
+      el.className = "upload-status" + (cls ? " " + cls : "");
+    }
+  </script>
+</body>
+</html>

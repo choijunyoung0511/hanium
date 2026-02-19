@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>우리팀 건설알림이 대시보드</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .app-header {
+      background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .app-header h1 { font-size: 18px; margin: 0; }
+    .app-header .sub { font-size: 12px; opacity: 0.9; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-right .today-label { font-size: 12px; opacity: 0.9; }
+    /* ✅ AI 시인 링크 버튼 */
+    .poet-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.12);
+      transition: background 0.15s;
+    }
+    .poet-link:hover { background: rgba(255,255,255,0.22); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: calc(100vh - 52px);
+    }
+
+    .sidebar {
+      border-right: 1px solid #e5e7eb;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-header span { color: #6b7280; }
+    .project-list { overflow-y: auto; }
+    .project-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f3f4f6;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+    .project-item:hover { background: #f9fafb; }
+    .project-item.active { background: #eff6ff; }
+    .project-name { font-weight: 600; margin-bottom: 4px; }
+    .project-meta {
+      font-size: 11px;
+      color: #6b7280;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      background: #e5f0ff;
+      color: #1d4ed8;
+    }
+    .badge-status-진행 { background: #dcfce7; color: #15803d; }
+    .badge-status-종료 { background: #e5e7eb; color: #374151; }
+    .badge-status-중지 { background: #fee2e2; color: #b91c1c; }
+
+    .detail { padding: 18px 20px; overflow-y: auto; }
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .detail-title { font-size: 18px; font-weight: 700; }
+    .detail-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .tab {
+      padding: 6px 10px;
+      border-radius: 6px 6px 0 0;
+      background: #f3f4f6;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tab.active {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-bottom-color: #ffffff;
+      font-weight: 600;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-size: 12px;
+    }
+    .card-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 4px;
+      color: #6b7280;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, #60a5fa, #0ea5e9);
+      width: 60%;
+    }
+
+    .dday { font-size: 16px; font-weight: 700; color: #1d4ed8; }
+    .dday-label { font-size: 11px; color: #6b7280; }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      row-gap: 6px;
+      column-gap: 8px;
+      font-size: 12px;
+    }
+    .info-label { color: #6b7280; }
+
+    .scale-box {
+      margin-top: 6px;
+      padding: 8px;
+      border-radius: 6px;
+      background: #f9fafb;
+      font-size: 11px;
+      white-space: pre-line;
+    }
+
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; height: auto; }
+      .sidebar { height: 280px; }
+      .detail { height: calc(100vh - 52px - 280px); }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+
+    #kakao-map {
+      display: block !important;
+      align-items: initial !important;
+      justify-content: initial !important;
+      background: transparent !important;
+    }
+
+    #photo-grid .photo-item{
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+      cursor: pointer;
+      transition: transform .08s ease, box-shadow .08s ease;
+    }
+    #photo-grid .photo-item:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    #photo-grid .photo-thumb{
+      height: 120px;
+      background: #f3f4f6;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    #photo-grid img{
+      width:100%;
+      height:120px;
+      object-fit:cover;
+      display:block;
+    }
+    #photo-grid .photo-meta{ padding: 10px; }
+    #photo-grid .photo-name{
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      max-height: 2.4em;
+      overflow: hidden;
+    }
+    #photo-grid .photo-date{
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+    #photo-grid .photo-actions{
+      margin-top: 8px;
+      display:flex;
+      gap:10px;
+      font-size: 11px;
+    }
+    #photo-grid .photo-actions a{
+      color:#2563eb;
+      text-decoration:none;
+    }
+    #photo-grid .photo-actions a:hover{ text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>서울특별시 건설알림이 – 우리팀 뷰</h1>
+      <div class="sub">서울시 공공데이터(건설 프로젝트)를 기반으로 한 내부용 대시보드</div>
+    </div>
+    <div class="header-right">
+      <!-- ✅ ChatPDF 페이지 링크 -->
+      <a class="poet-link" href="/chatpdf">📄 ChatPDF</a>
+      <!-- ✅ AI 시인 페이지 링크 -->
+      <a class="poet-link" href="/poet">✍️ AI 시인</a>
+      <span class="today-label">오늘 기준&nbsp;<span id="today"></span></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div>
+          <strong>프로젝트 목록</strong><br />
+          <span id="project-count">불러오는 중...</span>
+        </div>
+      </div>
+      <div class="project-list" id="project-list"></div>
+    </aside>
+
+    <section class="detail">
+      <div id="detail-empty">왼쪽에서 공사를 선택하세요.</div>
+
+      <div id="detail-main" style="display:none;">
+        <div class="detail-header">
+          <div>
+            <div class="detail-title" id="detail-name"></div>
+            <div class="detail-sub" id="detail-sub"></div>
+
+            <div class="tabs">
+              <div class="tab active" data-tab="overview">공개개요</div>
+              <div class="tab" data-tab="contract">계약현황</div>
+              <div class="tab" data-tab="progress">진행현황</div>
+              <div class="tab" data-tab="photos">공정사진</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div class="dday-label">D-DAY</div>
+            <div class="dday" id="detail-dday">-</div>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="card">
+            <div class="card-title">공사 요약</div>
+            <div class="progress-row">
+              <span>공사비(억)</span>
+              <span id="detail-amount"></span>
+            </div>
+            <div class="progress-row">
+              <span>시설구분</span>
+              <span id="detail-facility"></span>
+            </div>
+            <div class="progress-row">
+              <span>공사기간</span>
+              <span id="detail-period"></span>
+            </div>
+            <div class="progress-row">
+              <span>진행상태</span>
+              <span id="detail-status"></span>
+            </div>
+            <div style="margin-top:8px;">
+              <div class="dday-label">진행률(예시)</div>
+              <div class="progress-bar">
+                <div class="progress-bar-inner" id="detail-progress-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">개요</div>
+            <div class="info-grid">
+              <div class="info-label">공사위치</div>
+              <div id="detail-location"></div>
+
+              <div class="info-label">주무기관</div>
+              <div id="detail-org1"></div>
+
+              <div class="info-label">설계/감리</div>
+              <div id="detail-org2"></div>
+
+              <div class="info-label">시공/기타</div>
+              <div id="detail-org3"></div>
+            </div>
+            <div class="scale-box" id="detail-scale"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">작업 상세정보</div>
+            <div class="info-grid">
+              <div class="info-label">당기 정보</div>
+              <div id="detail-current-term">-</div>
+
+              <div class="info-label">차기 정보</div>
+              <div id="detail-next-term">-</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">초단기 날씨 (기상청 격자)</div>
+            <div class="info-grid">
+              <div class="info-label">격자 좌표</div>
+              <div id="weather-xy">-</div>
+
+              <div class="info-label">기준 시각</div>
+              <div id="weather-basetime">-</div>
+
+              <div class="info-label">기온</div>
+              <div id="weather-t1h">-</div>
+
+              <div class="info-label">습도</div>
+              <div id="weather-reh">-</div>
+
+              <div class="info-label">하늘 상태</div>
+              <div id="weather-sky">-</div>
+
+              <div class="info-label">1시간 강수량</div>
+              <div id="weather-rn1">-</div>
+
+              <div class="info-label">풍향</div>
+              <div id="weather-vec">-</div>
+
+              <div class="info-label">기상특보</div>
+              <div id="weather-warning">-</div>
+            </div>
+          </div>
+
+          <div class="card" style="grid-column: 1 / -1;">
+            <div class="card-title">공사장 위치 (카카오맵)</div>
+            <div id="kakao-map" style="width:100%; height:260px; border-radius:8px;"></div>
+            <div id="kakao-map-hint" style="margin-top:8px; font-size:11px; color:#6b7280;">
+              위치 정보를 불러오는 중...
+            </div>
+          </div>
+
+          <div class="card" id="photo-card" style="grid-column: 1 / -1; display:none;">
+            <div class="card-title">공정사진</div>
+            <div id="photo-status" style="font-size:11px; color:#6b7280;">
+              공정사진 탭을 누르면 사진을 불러옵니다.
+            </div>
+            <div id="photo-grid"
+                 style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:10px;">
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f6fbb6112f736fc5a87aecd58fd0ba5b&libraries=services"></script>
+
+  <script>
+    function showToday() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      const el = document.getElementById("today");
+      if (el) el.textContent = `${yyyy}-${mm}-${dd}`;
+    }
+
+    const SERVICE_KEY = "756f586a5065647738337a4e77576e";
+
+    let PROJECTS = [];
+    let GEO_BY_GU = {};
+
+    let kakaoMap = null;
+    let kakaoMarker = null;
+    let kakaoGeocoder = null;
+
+    let currentProjectCode = null;
+    let photoLoadedFor = null;
+
+    // -------------------- 기상청 LCC 좌표계 --------------------
+    const LAMC_MAP = {
+      Re: 6371.00877, grid: 5.0, slat1: 30.0, slat2: 60.0,
+      olon: 126.0, olat: 38.0, xo: 210 / 5.0, yo: 675 / 5.0
+    };
+    let LAMC_CONST = null;
+
+    function initLamc() {
+      if (LAMC_CONST) return LAMC_CONST;
+      const PI = Math.asin(1.0) * 2.0;
+      const DEGRAD = PI / 180.0;
+      const re = LAMC_MAP.Re / LAMC_MAP.grid;
+      const slat1 = LAMC_MAP.slat1 * DEGRAD;
+      const slat2 = LAMC_MAP.slat2 * DEGRAD;
+      const olon = LAMC_MAP.olon * DEGRAD;
+      const olat = LAMC_MAP.olat * DEGRAD;
+      let sn = Math.tan(PI * 0.25 + slat2 * 0.5) / Math.tan(PI * 0.25 + slat1 * 0.5);
+      sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+      let sf = Math.tan(PI * 0.25 + slat1 * 0.5);
+      sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
+      let ro = Math.tan(PI * 0.25 + olat * 0.5);
+      ro = re * sf / Math.pow(ro, sn);
+      LAMC_CONST = { PI, DEGRAD, RADDEG: 180.0 / PI, re, olon, olat, sn, sf, ro };
+      return LAMC_CONST;
+    }
+
+    function latLonToGrid(lon, lat) {
+      const c = initLamc();
+      let ra = Math.tan(c.PI * 0.25 + lat * c.DEGRAD * 0.5);
+      ra = c.re * c.sf / Math.pow(ra, c.sn);
+      let theta = lon * c.DEGRAD - c.olon;
+      if (theta > c.PI) theta -= 2.0 * c.PI;
+      if (theta < -c.PI) theta += 2.0 * c.PI;
+      theta *= c.sn;
+      return {
+        x: Math.floor(ra * Math.sin(theta) + LAMC_MAP.xo + 1.5),
+        y: Math.floor(c.ro - ra * Math.cos(theta) + LAMC_MAP.yo + 1.5)
+      };
+    }
+
+    // -------------------- 날씨 --------------------
+    function resetWeatherBox() {
+      ["weather-xy","weather-basetime","weather-t1h","weather-reh",
+       "weather-sky","weather-rn1","weather-vec","weather-warning"]
+        .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = "-"; });
+    }
+
+    function degToDirText(deg) {
+      const d = Number(deg);
+      if (Number.isNaN(d)) return "-";
+      const dirs = ["북","북동","동","남동","남","남서","서","북서"];
+      return `${dirs[Math.round(d / 45) % 8]} (${d}°)`;
+    }
+
+    async function fetchWeather(nx, ny) {
+      const boxXY   = document.getElementById("weather-xy");
+      const boxBase = document.getElementById("weather-basetime");
+      const boxT1H  = document.getElementById("weather-t1h");
+      const boxREH  = document.getElementById("weather-reh");
+      const boxSKY  = document.getElementById("weather-sky");
+      const boxRN1  = document.getElementById("weather-rn1");
+      const boxVEC  = document.getElementById("weather-vec");
+      const boxWARN = document.getElementById("weather-warning");
+
+      if (boxXY) boxXY.textContent = `X=${nx}, Y=${ny}`;
+      if (boxBase) boxBase.textContent = "불러오는 중...";
+
+      try {
+        const res = await fetch(`/weather?nx=${nx}&ny=${ny}`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "API 오류");
+
+        if (boxBase) boxBase.textContent = `${data.baseDate} ${data.baseTime} / 예보시각 ${data.fcstTime}`;
+        if (boxT1H)  boxT1H.textContent  = (data.T1H !== null && data.T1H !== undefined) ? `${data.T1H}℃` : "-";
+        if (boxREH)  boxREH.textContent  = (data.REH !== null && data.REH !== undefined) ? `${data.REH}%` : "-";
+
+        if (boxSKY) {
+          const code = data.SKY;
+          boxSKY.textContent = code === "1" ? "맑음" : code === "3" ? "구름많음" : code === "4" ? "흐림" : (code || "-");
+        }
+
+        if (boxRN1) boxRN1.textContent = (data.RN1 && data.RN1 !== "0" && data.RN1 !== "0.0") ? `${data.RN1}mm` : "없음";
+        if (boxVEC) boxVEC.textContent = (data.VEC !== null && data.VEC !== undefined) ? degToDirText(data.VEC) : "-";
+        if (boxWARN) boxWARN.textContent = data.warning || "특보 없음";
+      } catch (e) {
+        console.error("날씨 조회 실패:", e);
+        if (boxBase) boxBase.textContent = "날씨 정보를 불러오지 못했습니다.";
+      }
+    }
+
+    // -------------------- 당기/차기 --------------------
+    async function loadWorkTerms(pjtCd) {
+      const currentBox = document.getElementById("detail-current-term");
+      const nextBox    = document.getElementById("detail-next-term");
+      if (!currentBox || !nextBox) return;
+
+      currentBox.textContent = "불러오는 중...";
+      nextBox.textContent    = "불러오는 중...";
+
+      try {
+        if (!pjtCd) { currentBox.textContent = nextBox.textContent = "프로젝트 코드 없음"; return; }
+        const res = await fetch(`/pmis/work_terms?pjt_cd=${encodeURIComponent(pjtCd)}`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        if (!data.success) { currentBox.textContent = "당기 정보 없음"; nextBox.textContent = "차기 정보 없음"; return; }
+        currentBox.textContent = data.current || "당기 정보 없음";
+        nextBox.textContent    = data.next    || "차기 정보 없음";
+      } catch (e) {
+        console.error("work_terms error:", e);
+        currentBox.textContent = "당기 정보 로딩 실패";
+        nextBox.textContent    = "차기 정보 로딩 실패";
+      }
+    }
+
+    // -------------------- 공정사진 --------------------
+    function setActiveTab(tabName) {
+      document.querySelectorAll(".tabs .tab").forEach(t => t.classList.remove("active"));
+      const tab = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
+      if (tab) tab.classList.add("active");
+      const photoCard = document.getElementById("photo-card");
+      if (photoCard) photoCard.style.display = (tabName === "photos") ? "block" : "none";
+    }
+
+    function safeText(s) { return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+    async function loadPhotos(pjtCd) {
+      const statusEl = document.getElementById("photo-status");
+      const gridEl   = document.getElementById("photo-grid");
+      if (!statusEl || !gridEl) return;
+
+      statusEl.textContent = "사진 불러오는 중...";
+      gridEl.innerHTML = "";
+
+      try {
+        const res = await fetch(`/pmis/photos?pjt_cd=${encodeURIComponent(pjtCd)}`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        if (!data.success) { statusEl.textContent = data.error || "공정사진을 불러오지 못했습니다."; return; }
+
+        const valid = (data.photos || []).filter(p => (p.photo_url || "").trim().length > 0);
+        if (valid.length === 0) { statusEl.textContent = "등록된 공정사진이 없습니다."; return; }
+        statusEl.textContent = `총 ${valid.length}장`;
+
+        const frag = document.createDocumentFragment();
+        valid.forEach(ph => {
+          const url  = (ph.photo_url || "").trim();
+          const name = ph.photo_name || "공정사진";
+          const date = ph.shot_date  || "-";
+          const item = document.createElement("div");
+          item.className = "photo-item";
+          item.innerHTML = `
+            <div class="photo-thumb">
+              <img src="${url}" alt="${safeText(name)}" loading="lazy"
+                   onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;font-size:11px;color:#6b7280;&quot;>이미지 로드 실패</div>';" />
+            </div>
+            <div class="photo-meta">
+              <div class="photo-name" title="${safeText(name)}">${safeText(name)}</div>
+              <div class="photo-date">${safeText(date)}</div>
+              <div class="photo-actions">
+                <a href="${url}" target="_blank" rel="noopener">원본보기</a>
+              </div>
+            </div>`;
+          item.addEventListener("click", (e) => {
+            if (e.target && e.target.tagName === "A") return;
+            window.open(url, "_blank", "noopener");
+          });
+          frag.appendChild(item);
+        });
+        gridEl.appendChild(frag);
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = "공정사진 로딩 실패";
+      }
+    }
+
+    // -------------------- 카카오맵 --------------------
+    function ensureKakaoMap() {
+      const container = document.getElementById("kakao-map");
+      const hint = document.getElementById("kakao-map-hint");
+      if (!container) return null;
+      if (!window.kakao || !window.kakao.maps) {
+        if (hint) hint.textContent = "카카오 지도 SDK를 불러오지 못했습니다.";
+        return null;
+      }
+      if (!kakaoMap || container.childElementCount === 0) {
+        const center = new kakao.maps.LatLng(37.5665, 126.9780);
+        kakaoMap = new kakao.maps.Map(container, { center, level: 5 });
+        kakaoGeocoder = new kakao.maps.services.Geocoder();
+        kakaoMarker = new kakao.maps.Marker({ map: kakaoMap, position: center });
+        if (hint) hint.textContent = "지도 준비 완료";
+      }
+      setTimeout(() => { try { kakaoMap.relayout(); } catch(e){} }, 0);
+      return kakaoMap;
+    }
+
+    function getGeoForGu(guName) { return guName ? (GEO_BY_GU[guName] || null) : null; }
+
+    function updateKakaoMap(p) {
+      const map = ensureKakaoMap();
+      const hint = document.getElementById("kakao-map-hint");
+      if (!map || !kakaoGeocoder || !kakaoMarker) return;
+
+      const addr = (p.office_addr || "").trim();
+      const geo  = getGeoForGu(p.gu_name);
+
+      if (addr && addr !== "-") {
+        if (hint) hint.textContent = `주소로 위치 찾는 중: ${addr}`;
+        kakaoGeocoder.addressSearch(addr, function(result, status) {
+          if (status === kakao.maps.services.Status.OK && result.length > 0) {
+            const pos = new kakao.maps.LatLng(parseFloat(result[0].y), parseFloat(result[0].x));
+            kakaoMarker.setPosition(pos);
+            map.setCenter(pos);
+            map.setLevel(4);
+            if (hint) hint.textContent = "주소 기반 위치 표시 완료";
+          } else if (geo) {
+            const pos = new kakao.maps.LatLng(geo.lat, geo.lon);
+            kakaoMarker.setPosition(pos);
+            map.setCenter(pos);
+            map.setLevel(6);
+            if (hint) hint.textContent = "주소 검색 실패 → 구 좌표로 표시";
+          } else {
+            if (hint) hint.textContent = "주소/구 좌표 모두 없어 위치를 찾을 수 없습니다.";
+          }
+        });
+        return;
+      }
+
+      if (geo) {
+        const pos = new kakao.maps.LatLng(geo.lat, geo.lon);
+        kakaoMarker.setPosition(pos);
+        map.setCenter(pos);
+        map.setLevel(6);
+        if (hint) hint.textContent = "주소 없음 → 구 좌표로 표시";
+        return;
+      }
+
+      if (hint) hint.textContent = "주소/구 좌표 정보가 없습니다.";
+    }
+
+    // -------------------- 유틸 --------------------
+    function formatAmount(value) {
+      if (!value) return "-";
+      const num = Number(String(value).replace(/,/g, ""));
+      return isNaN(num) ? value : num.toLocaleString("ko-KR") + " 억";
+    }
+
+    function formatDateYYYYMMDD(value) {
+      if (!value || value.length !== 8) return value || "-";
+      return `${value.slice(0,4)}-${value.slice(4,6)}-${value.slice(6,8)}`;
+    }
+
+    function calcDDay(endDateStr) {
+      if (!endDateStr || endDateStr.length !== 8) return "-";
+      const end = new Date(Number(endDateStr.slice(0,4)), Number(endDateStr.slice(4,6))-1, Number(endDateStr.slice(6,8)));
+      const today = new Date();
+      end.setHours(0,0,0,0); today.setHours(0,0,0,0);
+      const d = Math.round((end - today) / 86400000);
+      return d > 0 ? `D-${d}` : d === 0 ? "D-DAY" : `D+${Math.abs(d)}`;
+    }
+
+    function estimateProgress(beginStr, endStr) {
+      if (!beginStr || !endStr || beginStr.length !== 8 || endStr.length !== 8) return 50;
+      const b = new Date(Number(beginStr.slice(0,4)), Number(beginStr.slice(4,6))-1, Number(beginStr.slice(6,8)));
+      const e = new Date(Number(endStr.slice(0,4)),   Number(endStr.slice(4,6))-1,   Number(endStr.slice(6,8)));
+      const t = new Date();
+      b.setHours(0,0,0,0); e.setHours(0,0,0,0); t.setHours(0,0,0,0);
+      if (t <= b) return 0;
+      if (t >= e) return 100;
+      return Math.round(((t - b) / (e - b)) * 100);
+    }
+
+    function escapeHtml(str) {
+      return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+
+    function getXmlText(row, tagName) {
+      const el = row.getElementsByTagName(tagName)[0];
+      return el && el.textContent ? el.textContent.trim() : null;
+    }
+
+    // -------------------- CSV(구 좌표) --------------------
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (!lines.length) return [];
+      const headers = lines[0].split(",").map(h => h.trim());
+      return lines.slice(1).map(line => {
+        const cols = line.split(",");
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = (cols[i] || "").trim(); });
+        return obj;
+      });
+    }
+
+    // 서울 25개 구 하드코딩 폴백 (CSV 파싱 실패 시 사용)
+    const SEOUL_GU_FALLBACK = {
+      "종로구":  { lat:37.5730, lon:126.9794 }, "중구":    { lat:37.5641, lon:126.9979 },
+      "용산구":  { lat:37.5311, lon:126.9810 }, "성동구":  { lat:37.5636, lon:127.0369 },
+      "광진구":  { lat:37.5384, lon:127.0822 }, "동대문구":{ lat:37.5744, lon:127.0396 },
+      "중랑구":  { lat:37.6063, lon:127.0927 }, "성북구":  { lat:37.5894, lon:127.0167 },
+      "강북구":  { lat:37.6396, lon:127.0255 }, "도봉구":  { lat:37.6688, lon:127.0470 },
+      "노원구":  { lat:37.6541, lon:127.0564 }, "은평구":  { lat:37.6027, lon:126.9291 },
+      "서대문구":{ lat:37.5794, lon:126.9368 }, "마포구":  { lat:37.5638, lon:126.9084 },
+      "양천구":  { lat:37.5170, lon:126.8665 }, "강서구":  { lat:37.5509, lon:126.8495 },
+      "구로구":  { lat:37.4955, lon:126.8876 }, "금천구":  { lat:37.4600, lon:126.9001 },
+      "영등포구":{ lat:37.5264, lon:126.8964 }, "동작구":  { lat:37.5124, lon:126.9395 },
+      "관악구":  { lat:37.4784, lon:126.9516 }, "서초구":  { lat:37.4836, lon:127.0326 },
+      "강남구":  { lat:37.5172, lon:127.0473 }, "송파구":  { lat:37.5145, lon:127.1059 },
+      "강동구":  { lat:37.5301, lon:127.1237 },
+    };
+
+    async function loadGeoData() {
+      // 항상 하드코딩 폴백으로 먼저 초기화
+      GEO_BY_GU = { ...SEOUL_GU_FALLBACK };
+      try {
+        const res = await fetch("/seoul_gu_geo.csv");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const rows = parseCsv(await res.text());
+        if (rows.length > 0) console.log("[loadGeoData] CSV columns:", Object.keys(rows[0]));
+        const map = { ...SEOUL_GU_FALLBACK };
+        rows.forEach(row => {
+          const gu = row["시군구"] || row["시군구명"] || row["2단계"] || row["2단계명"]
+                  || row["SGG_NM"] || row["구"] || "";
+          if (!gu) return;
+          const latRaw = row["위도"] || row["lat"] || row["LAT"] || row["위도(초/10)"] || row["위도(초/100)"] || row["Y"] || "";
+          const lonRaw = row["경도"] || row["lon"] || row["LON"] || row["경도(초/10)"] || row["경도(초/100)"] || row["X"] || "";
+          const lat = parseFloat(latRaw);
+          const lon = parseFloat(lonRaw);
+          // 서울 범위 검증
+          if (isNaN(lat) || isNaN(lon) || lat < 37.0 || lat > 38.0 || lon < 126.0 || lon > 128.0) return;
+          map[gu] = { lat, lon };
+        });
+        GEO_BY_GU = map;
+        console.log("[loadGeoData] 완료:", Object.keys(GEO_BY_GU));
+      } catch (e) {
+        console.warn("[loadGeoData] CSV 실패, 하드코딩 폴백 사용:", e);
+        // GEO_BY_GU는 이미 SEOUL_GU_FALLBACK으로 초기화됨
+      }
+    }
+
+    // -------------------- 프로젝트 목록 --------------------
+    async function loadProjects() {
+      try {
+        const url = `http://openapi.seoul.go.kr:8088/${SERVICE_KEY}/xml/pmisPjtList/1/40/`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const xml = new DOMParser().parseFromString(await res.text(), "text/xml");
+        PROJECTS = Array.from(xml.getElementsByTagName("row")).map(row => ({
+          seq: getXmlText(row, "SEQ"),
+          code: getXmlText(row, "PJT_CD"),
+          name: getXmlText(row, "PJT_NAME"),
+          facility_type: getXmlText(row, "FCT_F6_NM"),
+          gu_name: getXmlText(row, "GU_NAME"),
+          status: getXmlText(row, "PJT_FIN_YN_NM"),
+          begin_date: getXmlText(row, "PJT_BGN1_DATE"),
+          end_date: getXmlText(row, "PJT_COMPL_PREARR_DATE"),
+          amount: getXmlText(row, "TOT_CNTRT_AMT"),
+          scale: getXmlText(row, "PJT_SCALE"),
+          office_addr: getXmlText(row, "OFFICE_ADDR"),
+          org1: getXmlText(row, "ORG_1"),
+          org2: getXmlText(row, "ORG_2"),
+          org3: getXmlText(row, "ORG_3"),
+        }));
+        renderList();
+      } catch (err) {
+        console.error("[loadProjects] 에러:", err);
+        const el = document.getElementById("project-count");
+        if (el) el.textContent = "데이터 로딩 실패 🥲";
+      }
+    }
+
+    function renderList() {
+      const listEl  = document.getElementById("project-list");
+      const countEl = document.getElementById("project-count");
+      if (!listEl || !countEl) return;
+      listEl.innerHTML = "";
+      countEl.textContent = `총 ${PROJECTS.length}건`;
+
+      PROJECTS.forEach((p, idx) => {
+        const item = document.createElement("div");
+        item.className = "project-item";
+        item.dataset.index = idx;
+        const statusClass = p.status ? `badge-status-${p.status}` : "";
+        item.innerHTML = `
+          <div class="project-name">${escapeHtml(p.name || "")}</div>
+          <div class="project-meta">
+            <span>${escapeHtml(p.gu_name || "-")}</span>
+            <span>|</span>
+            <span>${escapeHtml(p.facility_type || "-")}</span>
+            <span class="badge ${statusClass}">${escapeHtml(p.status || "상태 미상")}</span>
+          </div>`;
+        item.addEventListener("click", () => {
+          document.querySelectorAll(".project-item").forEach(el => el.classList.remove("active"));
+          item.classList.add("active");
+          renderDetail(p);
+        });
+        listEl.appendChild(item);
+      });
+
+      if (PROJECTS.length > 0) {
+        const firstItem = listEl.querySelector(".project-item");
+        if (firstItem) { firstItem.classList.add("active"); renderDetail(PROJECTS[0]); }
+      }
+    }
+
+    function renderDetail(p) {
+      document.getElementById("detail-empty").style.display = "none";
+      document.getElementById("detail-main").style.display  = "block";
+
+      document.getElementById("detail-name").textContent = p.name || "";
+      document.getElementById("detail-sub").textContent  =
+        `${p.gu_name || "-"} · ${p.facility_type || "-"} · 프로젝트 코드 ${p.code || "-"}`;
+      document.getElementById("detail-dday").textContent     = calcDDay(p.end_date);
+      document.getElementById("detail-amount").textContent   = formatAmount(p.amount);
+      document.getElementById("detail-facility").textContent = p.facility_type || "-";
+      document.getElementById("detail-period").textContent   =
+        `${formatDateYYYYMMDD(p.begin_date)} ~ ${formatDateYYYYMMDD(p.end_date)}`;
+      document.getElementById("detail-status").textContent   = p.status || "-";
+      document.getElementById("detail-progress-bar").style.width = estimateProgress(p.begin_date, p.end_date) + "%";
+      document.getElementById("detail-location").textContent = p.office_addr || "-";
+      document.getElementById("detail-org1").textContent     = p.org1 || "-";
+      document.getElementById("detail-org2").textContent     = p.org2 || "-";
+      document.getElementById("detail-org3").textContent     = p.org3 || "-";
+
+      resetWeatherBox();
+
+      const geo = getGeoForGu(p.gu_name);
+      const scaleBox = document.getElementById("detail-scale");
+
+      if (geo) {
+        let extra = p.scale ? p.scale + "\n\n" : "";
+        extra += `[${p.gu_name}] 구 기준 좌표\n위도(lat): ${geo.lat}\n경도(lon): ${geo.lon}`;
+        const grid = latLonToGrid(geo.lon, geo.lat);
+        if (grid && Number.isFinite(grid.x) && Number.isFinite(grid.y)) {
+          extra += `\n기상청 격자(X,Y): ${grid.x}, ${grid.y}`;
+          scaleBox.textContent = extra;
+          fetchWeather(grid.x, grid.y);
+        } else {
+          scaleBox.textContent = extra;
+        }
+      } else {
+        scaleBox.textContent = p.scale || "";
+      }
+
+      loadWorkTerms((p.code || "").trim());
+      updateKakaoMap(p);
+
+      currentProjectCode = (p.code || "").trim();
+      photoLoadedFor = null;
+      setActiveTab("overview");
+
+      const statusEl = document.getElementById("photo-status");
+      const gridEl   = document.getElementById("photo-grid");
+      if (statusEl) statusEl.textContent = "공정사진 탭을 누르면 사진을 불러옵니다.";
+      if (gridEl)   gridEl.innerHTML = "";
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      showToday();
+      await loadGeoData();
+      await loadProjects();
+
+      document.querySelectorAll(".tabs .tab").forEach(tab => {
+        tab.addEventListener("click", async () => {
+          setActiveTab(tab.dataset.tab);
+          if (tab.dataset.tab === "photos" && currentProjectCode && photoLoadedFor !== currentProjectCode) {
+            photoLoadedFor = currentProjectCode;
+            await loadPhotos(currentProjectCode);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
