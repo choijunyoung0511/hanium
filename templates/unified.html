@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SafetyAI – 건설현장 안전관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f6fbb6112f736fc5a87aecd58fd0ba5b&libraries=services"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --blue: #2563eb; --blue-light: #eff6ff; --blue-mid: #3b82f6;
+  --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+  --gray-400: #9ca3af; --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
+  --sidebar-w: 220px; --header-h: 57px;
+}
+body { font-family: 'Noto Sans KR', sans-serif; background: #fff; margin: 0; }
+
+/* ── 헤더 ── */
+.app-header {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--header-h);
+  background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #fff; }
+.header-right { display: flex; align-items: center; gap: 14px; }
+.bell-btn { position: relative; background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.9); padding: 6px; }
+.bell-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; border: 1.5px solid #1d4ed8; }
+.user-chip { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.15); border-radius: 999px; padding: 5px 12px 5px 5px; font-size: 13px; font-weight: 500; color: #fff; }
+.avatar { width: 28px; height: 28px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+
+/* ── 레이아웃 ── */
+.app-body { display: flex; padding-top: var(--header-h); min-height: 100vh; }
+
+/* ── 사이드바 ── */
+.sidebar {
+  width: var(--sidebar-w); position: fixed; top: var(--header-h); left: 0; bottom: 0;
+  background: #fff; border-right: 1px solid var(--gray-200);
+  padding: 16px 0; overflow-y: auto; z-index: 50;
+}
+.nav-new {
+  display: flex; align-items: center; gap: 8px; margin: 0 12px 12px;
+  padding: 9px 14px; background: var(--blue); color: #fff; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.nav-new:hover { background: #1d4ed8; }
+.nav-divider { height: 1px; background: var(--gray-100); margin: 8px 0; }
+.nav-section { font-size: 10px; color: var(--gray-400); padding: 4px 20px 2px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+  font-size: 13px; font-weight: 500; color: var(--gray-500);
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.nav-item:hover { background: var(--gray-50); color: var(--gray-900); }
+.nav-item.active { background: var(--blue-light); color: var(--blue); font-weight: 600; border-right: 3px solid var(--blue); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── 메인 영역 ── */
+.main-content { margin-left: var(--sidebar-w); flex: 1; min-height: calc(100vh - var(--header-h)); }
+.view { display: none; padding: 36px 48px; }
+.view.active { display: block; }
+
+/* ── 공통 카드 ── */
+.card {
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: 12px; padding: 24px 28px; margin-bottom: 16px;
+}
+.card-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+.card-sub { font-size: 13px; color: var(--gray-500); margin-bottom: 20px; }
+.page-title { font-size: 22px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(--gray-500); margin-bottom: 28px; }
+
+/* ===== VIEW 1: 새 분석 (SafetyAI Wizard) ===== */
+.steps { display: flex; align-items: center; margin: 0 0 28px; }
+.step-wrap { display: flex; flex-direction: column; align-items: center; }
+.step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; transition: all .3s; }
+.step-circle.done { background: var(--blue); color: #fff; }
+.step-circle.active { background: var(--blue); color: #fff; box-shadow: 0 0 0 4px rgba(37,99,235,0.2); }
+.step-circle.pending { background: var(--gray-100); color: var(--gray-400); border: 2px solid var(--gray-200); }
+.step-label { font-size: 12px; font-weight: 500; margin-top: 6px; white-space: nowrap; color: var(--gray-500); }
+.step-label.active { color: var(--blue); font-weight: 700; }
+.step-connector { flex: 1; height: 2px; background: var(--gray-200); margin: 0 4px; margin-bottom: 20px; transition: background .3s; }
+.step-connector.done { background: var(--blue); }
+.step-panel { display: none; animation: fadeIn .25s ease; }
+.step-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* site list */
+.site-search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+.site-search-bar input { flex: 1; padding: 9px 14px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; outline: none; transition: border .15s; }
+.site-search-bar input:focus { border-color: var(--blue); }
+.site-list { border: 1px solid var(--gray-200); border-radius: 10px; overflow-y: auto; max-height: 260px; background: #fff; margin-bottom: 14px; }
+.site-item { padding: 11px 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background .12s; display: flex; align-items: center; justify-content: space-between; }
+.site-item:last-child { border-bottom: none; }
+.site-item:hover { background: var(--blue-light); }
+.site-item.selected { background: var(--blue-light); border-left: 3px solid var(--blue); }
+.site-item-name { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-bottom: 3px; }
+.site-item-meta { font-size: 11px; color: var(--gray-500); }
+.site-item-badge { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: #dcfce7; color: #15803d; font-weight: 600; flex-shrink: 0; margin-left: 8px; }
+.site-item-badge.stop { background: #fee2e2; color: #b91c1c; }
+.site-item-badge.done2 { background: #e5e7eb; color: #374151; }
+.site-loading { display: flex; align-items: center; gap: 8px; padding: 20px 16px; font-size: 13px; color: var(--gray-500); }
+.spin { width: 16px; height: 16px; border: 2px solid var(--gray-200); border-top-color: var(--blue); border-radius: 50%; animation: spinA .7s linear infinite; }
+@keyframes spinA { to { transform: rotate(360deg); } }
+.map-toggle-btn { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border: 1px dashed var(--gray-300); border-radius: 8px; background: #fff; color: var(--gray-600); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .15s; margin-bottom: 14px; width: 100%; }
+.map-toggle-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.map-section { display: none; }
+.map-section.open { display: block; }
+.location-search { display: flex; gap: 8px; margin-bottom: 12px; }
+.location-search input { flex: 1; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; outline: none; transition: border .15s; }
+.location-search input:focus { border-color: var(--blue); }
+.selected-loc { display: none; align-items: center; gap: 8px; padding: 10px 14px; background: var(--blue-light); border-radius: 8px; font-size: 13px; color: var(--blue); font-weight: 500; margin-top: 12px; }
+.selected-loc.show { display: flex; }
+
+/* upload */
+.upload-zone { border: 2px dashed var(--gray-200); border-radius: 10px; background: #fff; padding: 36px 20px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: border-color .2s, background .2s; margin-bottom: 14px; }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--blue); background: var(--blue-light); }
+.upload-icon { color: var(--gray-400); margin-bottom: 12px; }
+.upload-title { font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+.upload-hint { font-size: 12px; color: var(--gray-400); margin-bottom: 14px; }
+.btn-file { padding: 8px 20px; background: var(--blue); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.file-progress { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px 16px; display: none; }
+.file-progress.show { display: block; }
+.file-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.file-name { font-size: 13px; color: var(--gray-700); font-weight: 500; }
+.file-pct { font-size: 12px; color: var(--blue); font-weight: 600; }
+.prog-bar { height: 6px; background: var(--gray-200); border-radius: 999px; overflow: hidden; }
+.prog-inner { height: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); border-radius: 999px; width: 0%; transition: width .3s; }
+.preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 14px; }
+.preview-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 1px solid var(--gray-200); position: relative; }
+.preview-item img { width: 100%; height: 100%; object-fit: cover; }
+.preview-remove { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+
+/* chips */
+.question-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.chip { padding: 6px 14px; border: 1px solid var(--gray-200); border-radius: 999px; font-size: 12px; color: var(--gray-600); cursor: pointer; background: #fff; transition: all .15s; font-family: inherit; }
+.chip:hover, .chip.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
+.question-textarea { width: 100%; min-height: 110px; padding: 14px; border: 1px solid var(--gray-200); border-radius: 10px; font-size: 13px; font-family: inherit; color: var(--gray-900); background: #fff; resize: vertical; outline: none; transition: border .15s; line-height: 1.6; }
+.question-textarea:focus { border-color: var(--blue); }
+.char-count { font-size: 11px; color: var(--gray-400); text-align: right; margin-top: 6px; }
+
+/* review */
+.review-section { margin-bottom: 18px; }
+.review-label { font-size: 11px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.review-value { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--gray-700); }
+.review-images { display: flex; gap: 8px; flex-wrap: wrap; }
+.review-img { width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 1px solid var(--gray-200); }
+.review-img img { width: 100%; height: 100%; object-fit: cover; }
+.review-img-placeholder { width: 64px; height: 64px; border-radius: 6px; background: var(--gray-100); display: flex; align-items: center; justify-content: center; color: var(--gray-400); font-size: 11px; border: 1px solid var(--gray-200); }
+.ai-notice { background: var(--blue-light); border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; margin-bottom: 18px; }
+.ai-notice svg { color: var(--blue); flex-shrink: 0; margin-top: 2px; }
+.ai-notice-text { font-size: 13px; color: #1e40af; line-height: 1.5; }
+
+/* buttons */
+.footer-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.btn-prev { padding: 10px 24px; background: #fff; color: var(--gray-700); border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s; }
+.btn-prev:hover { background: var(--gray-50); }
+.btn-next { padding: 10px 24px; background: var(--blue); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s; }
+.btn-next:hover { background: #1d4ed8; }
+.btn-next:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+.btn-search { padding: 10px 18px; background: var(--blue); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s; }
+.btn-search:hover { background: #1d4ed8; }
+.btn-run { padding: 10px 28px; background: #16a34a; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; display: flex; align-items: center; gap: 6px; }
+.btn-run:hover { background: #15803d; }
+
+/* ===== VIEW 2: 대시보드 ===== */
+.dash-layout { display: grid; grid-template-columns: 300px 1fr; gap: 0; height: calc(100vh - var(--header-h)); margin: -36px -48px; }
+.dash-sidebar { border-right: 1px solid var(--gray-200); background: #fff; display: flex; flex-direction: column; }
+.dash-sidebar-hdr { padding: 14px 16px; border-bottom: 1px solid var(--gray-200); font-size: 13px; }
+.dash-sidebar-hdr strong { font-size: 14px; }
+.dash-sidebar-hdr span { color: var(--gray-500); font-size: 12px; }
+.project-list { overflow-y: auto; flex: 1; }
+.project-item { padding: 10px 14px; border-bottom: 1px solid var(--gray-50); cursor: pointer; font-size: 13px; transition: background .15s; }
+.project-item:hover { background: var(--gray-50); }
+.project-item.active { background: var(--blue-light); }
+.project-name { font-weight: 600; margin-bottom: 4px; font-size: 13px; }
+.project-meta { font-size: 11px; color: var(--gray-500); display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 10px; background: #e5f0ff; color: #1d4ed8; }
+.badge-진행 { background: #dcfce7; color: #15803d; }
+.badge-종료 { background: #e5e7eb; color: #374151; }
+.badge-중지 { background: #fee2e2; color: #b91c1c; }
+.dash-detail { padding: 20px; overflow-y: auto; }
+.dash-empty { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--gray-400); font-size: 14px; }
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.info-card { background: #fff; border-radius: 8px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); font-size: 12px; }
+.info-card-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--gray-900); }
+.info-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: var(--gray-500); }
+.info-grid2 { display: grid; grid-template-columns: 110px 1fr; row-gap: 6px; column-gap: 8px; font-size: 12px; }
+.info-lbl { color: var(--gray-500); }
+.prog-bar2 { height: 8px; background: var(--gray-200); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.prog-bar2-inner { height: 100%; background: linear-gradient(90deg, #60a5fa, #0ea5e9); }
+.dday { font-size: 18px; font-weight: 700; color: var(--blue); }
+.dday-lbl { font-size: 11px; color: var(--gray-400); }
+.scale-box { margin-top: 8px; padding: 8px; border-radius: 6px; background: var(--gray-50); font-size: 11px; white-space: pre-line; }
+.dash-tabs { display: flex; gap: 8px; margin-top: 10px; font-size: 12px; border-bottom: 1px solid var(--gray-200); }
+.dash-tab { padding: 6px 12px; border-radius: 6px 6px 0 0; background: var(--gray-100); cursor: pointer; user-select: none; }
+.dash-tab.active { background: #fff; border: 1px solid var(--gray-200); border-bottom-color: #fff; font-weight: 600; }
+
+/* photo grid */
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+.photo-item { border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; background: #fff; cursor: pointer; transition: transform .08s, box-shadow .08s; }
+.photo-item:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+.photo-thumb { height: 110px; background: var(--gray-100); }
+.photo-thumb img { width: 100%; height: 110px; object-fit: cover; display: block; }
+.photo-meta { padding: 8px 10px; }
+.photo-name { font-size: 11px; font-weight: 600; }
+.photo-date { font-size: 10px; color: var(--gray-500); margin-top: 4px; }
+.photo-link { font-size: 10px; color: var(--blue); text-decoration: none; margin-top: 4px; display: block; }
+
+/* ===== VIEW 3: 공사정보 보기 ===== */
+.pjt-info-header { display: flex; gap: 16px; margin-bottom: 20px; }
+.pjt-select-box { flex: 1; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; outline: none; }
+.pjt-select-box:focus { border-color: var(--blue); }
+.pjt-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.pjt-field { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 14px 18px; }
+.pjt-field-label { font-size: 11px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.pjt-field-value { font-size: 14px; font-weight: 600; color: var(--gray-900); line-height: 1.4; }
+.pjt-field-value.small { font-size: 12px; font-weight: 400; }
+.pjt-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; margin-top: 4px; }
+.pjt-badge.진행 { background: #dcfce7; color: #15803d; }
+.pjt-badge.종료 { background: #e5e7eb; color: #374151; }
+.pjt-badge.중지 { background: #fee2e2; color: #b91c1c; }
+.pjt-progress-wrap { margin-top: 8px; }
+.pjt-prog-bar { height: 10px; background: var(--gray-200); border-radius: 999px; overflow: hidden; }
+.pjt-prog-inner { height: 100%; background: linear-gradient(90deg, #3b82f6, #0ea5e9); border-radius: 999px; transition: width .5s; }
+.pjt-prog-pct { font-size: 12px; color: var(--blue); font-weight: 700; margin-top: 4px; }
+.pjt-work-box { background: var(--blue-light); border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; color: var(--gray-800); }
+.pjt-section-title { font-size: 15px; font-weight: 700; color: var(--gray-900); margin: 20px 0 12px; display: flex; align-items: center; gap: 6px; }
+#pjt-kakao-map { width: 100%; height: 280px; border-radius: 10px; border: 1px solid var(--gray-200); }
+.pjt-empty { text-align: center; padding: 60px; color: var(--gray-400); font-size: 14px; }
+
+/* weather box */
+.weather-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.weather-cell { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px 14px; }
+.weather-cell-label { font-size: 11px; color: var(--gray-400); margin-bottom: 4px; font-weight: 500; }
+.weather-cell-value { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+.weather-cell-value.warn { font-size: 12px; color: #dc2626; }
+
+/* ===== VIEW 4: ChatPDF ===== */
+.chatpdf-layout { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - var(--header-h)); margin: -36px -48px; }
+.upload-panel2 { background: #fff; border-right: 1px solid var(--gray-200); padding: 24px 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.panel-title { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+.drop-zone { border: 2px dashed #93c5fd; border-radius: 12px; padding: 28px 16px; text-align: center; cursor: pointer; transition: background .15s, border-color .15s; background: #f0f9ff; }
+.drop-zone:hover, .drop-zone.dragover { background: #dbeafe; border-color: #3b82f6; }
+.drop-zone .icon { font-size: 32px; margin-bottom: 8px; }
+.drop-zone .hint { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
+.file-info2 { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px; padding: 12px 14px; font-size: 13px; display: none; }
+.file-info2 .fname { font-weight: 700; word-break: break-all; }
+.file-info2 .fmeta { color: var(--gray-500); font-size: 11px; margin-top: 4px; }
+.upload-btn2 { width: 100%; padding: 11px; background: linear-gradient(90deg, #1d4ed8, #0ea5e9); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+.upload-btn2:disabled { opacity: 0.5; cursor: not-allowed; }
+.upload-status2 { font-size: 12px; color: var(--gray-500); text-align: center; }
+.upload-status2.ok { color: #15803d; }
+.upload-status2.err { color: #b91c1c; }
+.pdf-stats2 { display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #15803d; line-height: 1.8; }
+.chat-panel2 { display: flex; flex-direction: column; overflow: hidden; }
+.chat-messages2 { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+.chat-empty2 { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--gray-400); font-size: 14px; }
+.chat-empty2 .big { font-size: 40px; }
+.msg { max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: keep-all; }
+.msg.user { align-self: flex-end; background: #1d4ed8; color: #fff; border-bottom-right-radius: 4px; }
+.msg.bot { align-self: flex-start; background: #fff; border: 1px solid var(--gray-200); border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.msg.bot.thinking { color: var(--gray-400); font-style: italic; }
+.msg-label { font-size: 10px; color: var(--gray-400); margin-bottom: 3px; }
+.chat-input-row { padding: 12px 20px; border-top: 1px solid var(--gray-200); background: #fff; display: flex; gap: 10px; }
+.chat-input2 { flex: 1; padding: 11px 16px; border: 1.5px solid #d1d5db; border-radius: 10px; font-size: 14px; outline: none; resize: none; font-family: inherit; line-height: 1.5; transition: border-color .15s; }
+.chat-input2:focus { border-color: var(--blue); }
+.chat-input2:disabled { background: var(--gray-50); }
+.send-btn2 { padding: 11px 20px; background: linear-gradient(90deg, #1d4ed8, #0ea5e9); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+.send-btn2:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header class="app-header">
+  <div class="logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    SafetyAI
+  </div>
+  <div class="header-right">
+    <button class="bell-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="bell-dot"></span>
+    </button>
+    <div class="user-chip"><div class="avatar">홍</div>홍길동</div>
+  </div>
+</header>
+
+<div class="app-body">
+  <!-- ── 사이드바 ── -->
+  <aside class="sidebar">
+    <div class="nav-new" onclick="showView('wizard')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      새 분석
+    </div>
+    <div class="nav-section">메인</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="showView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      대시보드
+    </div>
+    <div class="nav-item" id="nav-pjtinfo" onclick="showView('pjtinfo')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      공사정보 보기
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section">분석</div>
+    <div class="nav-item" id="nav-wizard" onclick="showView('wizard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      새 분석 시작
+    </div>
+    <div class="nav-item" id="nav-chatpdf" onclick="showView('chatpdf')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      ChatPDF
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section">관리</div>
+    <div class="nav-item" onclick="">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      조치 필요 현장
+    </div>
+    <div class="nav-item" onclick="">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      설정
+    </div>
+  </aside>
+
+  <!-- ── 메인 콘텐츠 ── -->
+  <div class="main-content">
+
+    <!-- ===== VIEW: 대시보드 ===== -->
+    <div class="view active" id="view-dashboard">
+      <div class="dash-layout">
+        <div class="dash-sidebar">
+          <div class="dash-sidebar-hdr">
+            <strong>프로젝트 목록</strong><br/>
+            <span id="dash-count">불러오는 중...</span>
+          </div>
+          <div class="project-list" id="dash-project-list"></div>
+        </div>
+        <div class="dash-detail" id="dash-detail">
+          <div class="dash-empty" id="dash-empty">← 공사를 선택하세요</div>
+          <div id="dash-main" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div style="font-size:18px;font-weight:700;" id="d-name"></div>
+                <div style="font-size:12px;color:#6b7280;margin-top:2px;" id="d-sub"></div>
+                <div class="dash-tabs">
+                  <div class="dash-tab active" onclick="setDashTab('overview',this)">공개개요</div>
+                  <div class="dash-tab" onclick="setDashTab('photos',this)">공정사진</div>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div class="dday-lbl">D-DAY</div>
+                <div class="dday" id="d-dday">-</div>
+              </div>
+            </div>
+            <div id="dash-tab-overview">
+              <div class="summary-grid">
+                <div class="info-card">
+                  <div class="info-card-title">공사 요약</div>
+                  <div class="info-row"><span>공사비(억)</span><span id="d-amount">-</span></div>
+                  <div class="info-row"><span>시설구분</span><span id="d-facility">-</span></div>
+                  <div class="info-row"><span>공사기간</span><span id="d-period">-</span></div>
+                  <div class="info-row"><span>진행상태</span><span id="d-status">-</span></div>
+                  <div class="prog-bar2" style="margin-top:8px;"><div class="prog-bar2-inner" id="d-progbar" style="width:0%"></div></div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-title">개요</div>
+                  <div class="info-grid2">
+                    <div class="info-lbl">공사위치</div><div id="d-loc">-</div>
+                    <div class="info-lbl">주무기관</div><div id="d-org1">-</div>
+                    <div class="info-lbl">설계/감리</div><div id="d-org2">-</div>
+                    <div class="info-lbl">시공/기타</div><div id="d-org3">-</div>
+                  </div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-title">작업 상세</div>
+                  <div class="info-grid2">
+                    <div class="info-lbl">당기</div><div id="d-current">-</div>
+                    <div class="info-lbl">차기</div><div id="d-next">-</div>
+                  </div>
+                </div>
+                <div class="info-card">
+                  <div class="info-card-title">날씨 (기상청)</div>
+                  <div class="info-grid2">
+                    <div class="info-lbl">기온</div><div id="d-t1h">-</div>
+                    <div class="info-lbl">하늘</div><div id="d-sky">-</div>
+                    <div class="info-lbl">습도</div><div id="d-reh">-</div>
+                    <div class="info-lbl">기상특보</div><div id="d-warn">-</div>
+                  </div>
+                </div>
+                <div class="info-card" style="grid-column:1/-1;">
+                  <div class="info-card-title">공사장 위치</div>
+                  <div id="dash-kakao-map" style="width:100%;height:240px;border-radius:8px;border:1px solid var(--gray-200);"></div>
+                  <div id="dash-map-hint" style="font-size:11px;color:#6b7280;margin-top:6px;">위치 불러오는 중...</div>
+                </div>
+              </div>
+            </div>
+            <div id="dash-tab-photos" style="display:none;">
+              <div style="font-size:12px;color:#6b7280;" id="dash-photo-status">프로젝트를 선택하면 사진을 불러옵니다.</div>
+              <div class="photo-grid" id="dash-photo-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: 공사정보 보기 ===== -->
+    <div class="view" id="view-pjtinfo">
+      <div class="page-title">공사정보 보기</div>
+      <div class="page-sub">프로젝트를 선택하면 상세 공사정보를 확인할 수 있습니다.</div>
+      <div class="pjt-info-header">
+        <select class="pjt-select-box" id="pjt-select" onchange="loadPjtInfo()">
+          <option value="">-- 공사 프로젝트 선택 --</option>
+        </select>
+      </div>
+      <div id="pjt-empty" class="pjt-empty">⬆ 위에서 프로젝트를 선택하세요</div>
+      <div id="pjt-main" style="display:none;">
+        <div class="pjt-info-grid">
+          <div class="pjt-field" style="grid-column:1/-1;">
+            <div class="pjt-field-label">공사명</div>
+            <div class="pjt-field-value" id="pi-name">-</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">진행 상태</div>
+            <div id="pi-status-wrap"><span class="pjt-badge" id="pi-status">-</span></div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">D-DAY</div>
+            <div class="pjt-field-value" id="pi-dday">-</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">공사비</div>
+            <div class="pjt-field-value" id="pi-amount">-</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">시설구분</div>
+            <div class="pjt-field-value" id="pi-facility">-</div>
+          </div>
+          <div class="pjt-field" style="grid-column:1/-1;">
+            <div class="pjt-field-label">공사기간</div>
+            <div class="pjt-field-value" id="pi-period">-</div>
+            <div class="pjt-progress-wrap">
+              <div class="pjt-prog-bar"><div class="pjt-prog-inner" id="pi-progbar" style="width:0%"></div></div>
+              <div class="pjt-prog-pct" id="pi-pct">0%</div>
+            </div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">공사위치</div>
+            <div class="pjt-field-value small" id="pi-loc">-</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">주무기관</div>
+            <div class="pjt-field-value small" id="pi-org1">-</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">설계/감리</div>
+            <div class="pjt-field-value small" id="pi-org2">-</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">시공/기타</div>
+            <div class="pjt-field-value small" id="pi-org3">-</div>
+          </div>
+        </div>
+
+        <div class="pjt-section-title">🔧 작업 상세정보 (당기/차기)</div>
+        <div class="pjt-info-grid">
+          <div class="pjt-field">
+            <div class="pjt-field-label">당기 정보</div>
+            <div class="pjt-work-box" id="pi-current">불러오는 중...</div>
+          </div>
+          <div class="pjt-field">
+            <div class="pjt-field-label">차기 정보</div>
+            <div class="pjt-work-box" id="pi-next">불러오는 중...</div>
+          </div>
+        </div>
+
+        <div class="pjt-section-title">🌤 현장 날씨</div>
+        <div class="weather-grid">
+          <div class="weather-cell"><div class="weather-cell-label">기온</div><div class="weather-cell-value" id="pi-t1h">-</div></div>
+          <div class="weather-cell"><div class="weather-cell-label">하늘</div><div class="weather-cell-value" id="pi-sky">-</div></div>
+          <div class="weather-cell"><div class="weather-cell-label">습도</div><div class="weather-cell-value" id="pi-reh">-</div></div>
+          <div class="weather-cell"><div class="weather-cell-label">기상특보</div><div class="weather-cell-value warn" id="pi-warn">-</div></div>
+        </div>
+
+        <div class="pjt-section-title">📍 공사장 위치</div>
+        <div id="pjt-kakao-map" style="width:100%;height:280px;border-radius:10px;border:1px solid var(--gray-200);margin-bottom:8px;"></div>
+        <div style="font-size:11px;color:#6b7280;" id="pjt-map-hint">지도 준비 중...</div>
+
+        <div class="pjt-section-title">📸 공정사진</div>
+        <div style="font-size:12px;color:#6b7280;" id="pi-photo-status">불러오는 중...</div>
+        <div class="photo-grid" id="pi-photo-grid"></div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: 새 분석 Wizard ===== -->
+    <div class="view" id="view-wizard">
+      <div class="page-title">새 분석 시작</div>
+      <div class="page-sub">현장 사진을 업로드하고 AI 분석을 시작하세요</div>
+      <div class="steps" id="wiz-steps">
+        <div class="step-wrap"><div class="step-circle active" id="wsc1">1</div><div class="step-label active" id="wsl1">위치 선택</div></div>
+        <div class="step-connector" id="wconn1"></div>
+        <div class="step-wrap"><div class="step-circle pending" id="wsc2">2</div><div class="step-label" id="wsl2">이미지 업로드</div></div>
+        <div class="step-connector" id="wconn2"></div>
+        <div class="step-wrap"><div class="step-circle pending" id="wsc3">3</div><div class="step-label" id="wsl3">질문 입력</div></div>
+        <div class="step-connector" id="wconn3"></div>
+        <div class="step-wrap"><div class="step-circle pending" id="wsc4">4</div><div class="step-label" id="wsl4">검토 및 실행</div></div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div class="step-panel active" id="wpanel1">
+        <div class="card">
+          <div class="card-title">현장 위치 선택</div>
+          <div class="card-sub">서울시 건설 현장 목록에서 선택하거나, 없는 경우 지도에서 검색하세요.</div>
+          <div class="site-search-bar">
+            <input type="text" id="wiz-site-filter" placeholder="현장명 또는 구 이름 검색..." oninput="wizFilterSites(this.value)" />
+          </div>
+          <div class="site-list" id="wiz-site-list">
+            <div class="site-loading"><div class="spin"></div> 공사장 목록 불러오는 중...</div>
+          </div>
+          <button class="map-toggle-btn" onclick="toggleWizMap()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            목록에 없는 현장 – 지도에서 직접 검색
+          </button>
+          <div class="map-section" id="wiz-map-section">
+            <div class="location-search">
+              <input type="text" id="wiz-loc-input" placeholder="주소 검색" />
+              <button class="btn-search" onclick="wizSearchAddr()">검색</button>
+            </div>
+            <div id="wiz-kakao-map" style="width:100%;height:260px;border-radius:10px;border:1px solid var(--gray-200);"></div>
+          </div>
+          <div class="selected-loc" id="wiz-selected-loc">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="wiz-loc-text">선택된 위치 없음</span>
+          </div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-next" id="wbtn1" onclick="wizGo(2)" disabled>다음 단계</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-panel" id="wpanel2">
+        <div class="card">
+          <div class="card-title">현장 사진 업로드</div>
+          <div class="card-sub">분석할 사진을 업로드해주세요. 여러 장 가능합니다.</div>
+          <div class="upload-zone" id="wiz-upload-zone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="wizDrop(event)"
+               onclick="document.getElementById('wiz-file-input').click()">
+            <div class="upload-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polyline points="16,16 12,12 8,16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+              </svg>
+            </div>
+            <div class="upload-title">파일을 드래그하거나 클릭하여 업로드</div>
+            <div class="upload-hint">JPG, PNG, WEBP (최대 10MB)</div>
+            <button class="btn-file" onclick="event.stopPropagation();document.getElementById('wiz-file-input').click()">파일 선택</button>
+          </div>
+          <input type="file" id="wiz-file-input" accept="image/*" multiple onchange="wizHandleFiles(this.files)" style="display:none;" />
+          <div class="file-progress" id="wiz-file-progress">
+            <div class="file-row">
+              <span class="file-name" id="wiz-fname">파일명</span>
+              <span class="file-pct" id="wiz-fpct">0%</span>
+            </div>
+            <div class="prog-bar"><div class="prog-inner" id="wiz-prog-inner"></div></div>
+          </div>
+          <div class="preview-grid" id="wiz-preview-grid"></div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-prev" onclick="wizGo(1)">이전</button>
+          <button class="btn-next" id="wbtn2" onclick="wizGo(3)" disabled>다음 단계</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-panel" id="wpanel3">
+        <div class="card">
+          <div class="card-title">분석 질문 입력</div>
+          <div class="card-sub">AI에게 어떤 내용을 분석해달라고 할지 입력하세요.</div>
+          <div class="question-chips">
+            <button class="chip" onclick="wizChip(this,'안전모 미착용 여부를 확인해주세요')">🪖 안전모</button>
+            <button class="chip" onclick="wizChip(this,'추락 위험 구간을 식별해주세요')">⚠️ 추락</button>
+            <button class="chip" onclick="wizChip(this,'화재 위험 요소를 분석해주세요')">🔥 화재</button>
+            <button class="chip" onclick="wizChip(this,'안전 장비 착용 상태를 점검해주세요')">🦺 안전장비</button>
+            <button class="chip" onclick="wizChip(this,'현장 정리정돈 상태를 평가해주세요')">📋 정리정돈</button>
+          </div>
+          <textarea class="question-textarea" id="wiz-question" placeholder="예: 이 현장에서 안전 위반 사항이 있는지 확인하고 개선 방안을 제시해주세요." oninput="wizUpdateChar(this)"></textarea>
+          <div class="char-count"><span id="wiz-char-cnt">0</span> / 500자</div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-prev" onclick="wizGo(2)">이전</button>
+          <button class="btn-next" id="wbtn3" onclick="wizGo(4)" disabled>다음 단계</button>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-panel" id="wpanel4">
+        <div class="card">
+          <div class="card-title">분석 정보 검토</div>
+          <div class="card-sub">아래 내용을 확인하고 AI 분석을 시작하세요.</div>
+          <div class="review-section"><div class="review-label">📍 위치</div><div class="review-value" id="rv-loc">-</div></div>
+          <div class="review-section"><div class="review-label">🖼️ 사진</div><div class="review-images" id="rv-images"></div></div>
+          <div class="review-section"><div class="review-label">❓ 질문</div><div class="review-value" id="rv-question">-</div></div>
+          <div class="ai-notice">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div class="ai-notice-text">AI가 업로드된 사진과 질문을 바탕으로 안전 위험 요소를 분석합니다. 약 30초~2분 소요됩니다.</div>
+          </div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-prev" onclick="wizGo(3)">이전</button>
+          <button class="btn-run" id="btn-run" onclick="wizRun()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21 5,3"/></svg>
+            AI 분석 시작
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: ChatPDF ===== -->
+    <div class="view" id="view-chatpdf">
+      <div class="chatpdf-layout">
+        <div class="upload-panel2">
+          <div class="panel-title">📂 PDF 업로드</div>
+          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('pdf-file-input').click()">
+            <div class="icon">📑</div>
+            <div><strong>PDF 파일을 클릭하거나 드래그</strong></div>
+            <div class="hint">최대 50MB · PDF만 가능</div>
+          </div>
+          <input type="file" id="pdf-file-input" accept=".pdf" style="display:none;" />
+          <div class="file-info2" id="pdf-file-info">
+            <div class="fname" id="pdf-fname"></div>
+            <div class="fmeta" id="pdf-fmeta"></div>
+          </div>
+          <button class="upload-btn2" id="pdf-upload-btn" disabled onclick="pdfUpload()">🚀 분석 시작</button>
+          <div class="upload-status2" id="pdf-status">PDF를 선택하면 분석을 시작할 수 있습니다.</div>
+          <div class="pdf-stats2" id="pdf-stats"></div>
+        </div>
+        <div class="chat-panel2">
+          <div class="chat-messages2" id="chat-msgs">
+            <div class="chat-empty2" id="chat-empty2">
+              <div class="big">💬</div>
+              <div>PDF를 업로드하면 질문할 수 있습니다</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-input2" id="chat-input2" rows="2" placeholder="PDF가 업로드되면 질문을 입력하세요..." disabled></textarea>
+            <button class="send-btn2" id="chat-send-btn" disabled onclick="pdfAsk()">전송</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+</div><!-- end app-body -->
+
+<script>
+// ── 공통 데이터 ──
+const SEOUL_KEY = "756f586a5065647738337a4e77576e";
+let allProjects = [];
+let currentProject = null;
+
+// ── 뷰 전환 ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
+
+  if (name === 'dashboard' && allProjects.length === 0) loadProjects();
+  if (name === 'pjtinfo' && allProjects.length === 0) loadProjects();
+  if (name === 'wizard' && allProjects.length === 0) loadProjects();
+}
+
+// ── 유틸 ──
+function getXml(row, tag) { const el = row.getElementsByTagName(tag)[0]; return el ? (el.textContent||'').trim() : ''; }
+function fmtDate(v) { if (!v||v.length!==8) return v||'-'; return v.slice(0,4)+'-'+v.slice(4,6)+'-'+v.slice(6,8); }
+function fmtAmt(v) { if (!v) return '-'; const n=Number(String(v).replace(/,/g,'')); return isNaN(n)?v:n.toLocaleString('ko-KR')+' 억'; }
+function calcDDay(e) { if (!e||e.length!==8) return '-'; const ed=new Date(+e.slice(0,4),+e.slice(4,6)-1,+e.slice(6,8)),td=new Date(); ed.setHours(0,0,0,0);td.setHours(0,0,0,0); const d=Math.round((ed-td)/86400000); return d>0?'D-'+d:d===0?'D-DAY':'D+'+Math.abs(d); }
+function calcProg(b,e) { if (!b||!e||b.length!==8||e.length!==8) return 50; const bd=new Date(+b.slice(0,4),+b.slice(4,6)-1,+b.slice(6,8)),ed=new Date(+e.slice(0,4),+e.slice(4,6)-1,+e.slice(6,8)),td=new Date(); bd.setHours(0,0,0,0);ed.setHours(0,0,0,0);td.setHours(0,0,0,0); if(td<=bd)return 0;if(td>=ed)return 100; return Math.round((td-bd)/(ed-bd)*100); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── LCC 변환 ──
+const LAMC={Re:6371.00877,grid:5,slat1:30,slat2:60,olon:126,olat:38,xo:42,yo:135};
+let LAMC_C=null;
+function initLamc(){if(LAMC_C)return LAMC_C;const PI=Math.PI,D=PI/180,re=LAMC.Re/LAMC.grid,s1=LAMC.slat1*D,s2=LAMC.slat2*D,ol=LAMC.olon*D,oa=LAMC.olat*D;let sn=Math.log(Math.cos(s1)/Math.cos(s2))/Math.log(Math.tan(PI/4+s2/2)/Math.tan(PI/4+s1/2));let sf=Math.pow(Math.tan(PI/4+s1/2),sn)*Math.cos(s1)/sn;let ro=re*sf/Math.pow(Math.tan(PI/4+oa/2),sn);LAMC_C={PI,D,re,ol,oa,sn,sf,ro};return LAMC_C;}
+function latlon2grid(lon,lat){const c=initLamc();let ra=c.re*c.sf/Math.pow(Math.tan(c.PI/4+lat*c.D/2),c.sn);let th=lon*c.D-c.ol;if(th>c.PI)th-=2*c.PI;if(th<-c.PI)th+=2*c.PI;th*=c.sn;return{x:Math.floor(ra*Math.sin(th)+LAMC.xo+1.5),y:Math.floor(c.ro-ra*Math.cos(th)+LAMC.yo+1.5)};}
+
+const GU_FALLBACK={"종로구":{lat:37.573,lon:126.979},"중구":{lat:37.564,lon:126.998},"용산구":{lat:37.531,lon:126.981},"성동구":{lat:37.564,lon:127.037},"광진구":{lat:37.538,lon:127.082},"동대문구":{lat:37.574,lon:127.040},"중랑구":{lat:37.606,lon:127.093},"성북구":{lat:37.589,lon:127.017},"강북구":{lat:37.640,lon:127.026},"도봉구":{lat:37.669,lon:127.047},"노원구":{lat:37.654,lon:127.056},"은평구":{lat:37.603,lon:126.929},"서대문구":{lat:37.579,lon:126.937},"마포구":{lat:37.564,lon:126.908},"양천구":{lat:37.517,lon:126.867},"강서구":{lat:37.551,lon:126.850},"구로구":{lat:37.496,lon:126.888},"금천구":{lat:37.460,lon:126.900},"영등포구":{lat:37.526,lon:126.896},"동작구":{lat:37.512,lon:126.940},"관악구":{lat:37.478,lon:126.952},"서초구":{lat:37.484,lon:127.033},"강남구":{lat:37.517,lon:127.047},"송파구":{lat:37.515,lon:127.106},"강동구":{lat:37.530,lon:127.124}};
+
+// ── 프로젝트 로드 ──
+async function loadProjects() {
+  try {
+    const res = await fetch(`http://openapi.seoul.go.kr:8088/${SEOUL_KEY}/xml/pmisPjtList/1/40/`);
+    const xml = new DOMParser().parseFromString(await res.text(),'text/xml');
+    allProjects = Array.from(xml.getElementsByTagName('row')).map(row=>({
+      code:getXml(row,'PJT_CD'), name:getXml(row,'PJT_NAME'), gu:getXml(row,'GU_NAME'),
+      type:getXml(row,'FCT_F6_NM'), status:getXml(row,'PJT_FIN_YN_NM'),
+      begin:getXml(row,'PJT_BGN1_DATE'), end:getXml(row,'PJT_COMPL_PREARR_DATE'),
+      amount:getXml(row,'TOT_CNTRT_AMT'), scale:getXml(row,'PJT_SCALE'),
+      addr:getXml(row,'OFFICE_ADDR'), org1:getXml(row,'ORG_1'), org2:getXml(row,'ORG_2'), org3:getXml(row,'ORG_3'),
+    }));
+    renderDashList();
+    renderPjtSelect();
+    renderWizSiteList(allProjects);
+    document.getElementById('dash-count').textContent = '총 '+allProjects.length+'건';
+  } catch(e) {
+    document.getElementById('dash-count').textContent = '로딩 실패';
+  }
+}
+
+// ===== 대시보드 =====
+let dashKakaoMap=null, dashMarker=null, dashGeocoder=null, dashPhotoFor=null;
+let dashCurrentTab='overview';
+
+function renderDashList() {
+  const el=document.getElementById('dash-project-list');
+  el.innerHTML = allProjects.map((p,i)=>`
+    <div class="project-item" onclick="selectDashProject(${i})">
+      <div class="project-name">${esc(p.name)}</div>
+      <div class="project-meta"><span>${esc(p.gu||'-')}</span><span>|</span><span>${esc(p.type||'-')}</span><span class="badge badge-${p.status||''}">${esc(p.status||'?')}</span></div>
+    </div>`).join('');
+  if (allProjects.length>0) selectDashProject(0);
+}
+
+function selectDashProject(i) {
+  document.querySelectorAll('.dash-project-list .project-item, #dash-project-list .project-item').forEach((el,idx)=>el.classList.toggle('active',idx===i));
+  const p=allProjects[i]; currentProject=p;
+  document.getElementById('dash-empty').style.display='none';
+  document.getElementById('dash-main').style.display='block';
+  document.getElementById('d-name').textContent=p.name;
+  document.getElementById('d-sub').textContent=(p.gu||'-')+' · '+(p.type||'-')+' · '+p.code;
+  document.getElementById('d-dday').textContent=calcDDay(p.end);
+  document.getElementById('d-amount').textContent=fmtAmt(p.amount);
+  document.getElementById('d-facility').textContent=p.type||'-';
+  document.getElementById('d-period').textContent=fmtDate(p.begin)+' ~ '+fmtDate(p.end);
+  document.getElementById('d-status').textContent=p.status||'-';
+  document.getElementById('d-progbar').style.width=calcProg(p.begin,p.end)+'%';
+  document.getElementById('d-loc').textContent=p.addr||'-';
+  document.getElementById('d-org1').textContent=p.org1||'-';
+  document.getElementById('d-org2').textContent=p.org2||'-';
+  document.getElementById('d-org3').textContent=p.org3||'-';
+  // weather
+  const geo=GU_FALLBACK[p.gu];
+  if(geo){const g=latlon2grid(geo.lon,geo.lat);fetchWeatherDash(g.x,g.y);}
+  // work terms
+  loadWorkTermsDash(p.code);
+  // map
+  dashUpdateMap(p);
+  // photos
+  dashPhotoFor=null;
+  if(dashCurrentTab==='photos') loadDashPhotos(p.code);
+}
+
+function setDashTab(tab, el) {
+  dashCurrentTab=tab;
+  document.querySelectorAll('.dash-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('dash-tab-overview').style.display=tab==='overview'?'':'none';
+  document.getElementById('dash-tab-photos').style.display=tab==='photos'?'':'none';
+  if(tab==='photos'&&currentProject&&dashPhotoFor!==currentProject.code){
+    dashPhotoFor=currentProject.code;
+    loadDashPhotos(currentProject.code);
+  }
+}
+
+async function fetchWeatherDash(nx,ny){
+  try{const r=await fetch(`/weather?nx=${nx}&ny=${ny}`);const d=await r.json();if(!d.success)return;
+    document.getElementById('d-t1h').textContent=d.T1H?d.T1H+'℃':'-';
+    document.getElementById('d-sky').textContent=d.SKY==='1'?'맑음':d.SKY==='3'?'구름많음':d.SKY==='4'?'흐림':'-';
+    document.getElementById('d-reh').textContent=d.REH?d.REH+'%':'-';
+    document.getElementById('d-warn').textContent=d.warning||'-';
+  }catch(e){}
+}
+
+async function loadWorkTermsDash(code){
+  try{const r=await fetch(`/pmis/work_terms?pjt_cd=${encodeURIComponent(code)}`);const d=await r.json();
+    document.getElementById('d-current').innerHTML=d.current||'당기 정보 없음';
+    document.getElementById('d-next').innerHTML=d.next||'차기 정보 없음';
+  }catch(e){}
+}
+
+function dashUpdateMap(p){
+  if(!window.kakao||!kakao.maps) return;
+  const container=document.getElementById('dash-kakao-map');
+  if(!dashKakaoMap||container.childElementCount===0){
+    dashKakaoMap=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(37.5665,126.978),level:5});
+    dashGeocoder=new kakao.maps.services.Geocoder();
+    dashMarker=new kakao.maps.Marker({map:dashKakaoMap,position:new kakao.maps.LatLng(37.5665,126.978)});
+  }
+  setTimeout(()=>{try{dashKakaoMap.relayout();}catch(e){}},0);
+  const hint=document.getElementById('dash-map-hint');
+  if(p.addr&&p.addr!=='-'){
+    dashGeocoder.addressSearch(p.addr,(res,st)=>{
+      if(st===kakao.maps.services.Status.OK){const pos=new kakao.maps.LatLng(+res[0].y,+res[0].x);dashMarker.setPosition(pos);dashKakaoMap.setCenter(pos);dashKakaoMap.setLevel(4);if(hint)hint.textContent='주소 기반 위치';}
+      else{const geo=GU_FALLBACK[p.gu];if(geo){const pos=new kakao.maps.LatLng(geo.lat,geo.lon);dashMarker.setPosition(pos);dashKakaoMap.setCenter(pos);dashKakaoMap.setLevel(6);}}
+    });
+  } else {
+    const geo=GU_FALLBACK[p.gu];
+    if(geo){const pos=new kakao.maps.LatLng(geo.lat,geo.lon);dashMarker.setPosition(pos);dashKakaoMap.setCenter(pos);dashKakaoMap.setLevel(6);if(hint)hint.textContent='구 좌표 기반';}
+  }
+}
+
+async function loadDashPhotos(code){
+  const stat=document.getElementById('dash-photo-status'),grid=document.getElementById('dash-photo-grid');
+  stat.innerHTML='<div style="display:flex;align-items:center;gap:8px;"><div class="spin"></div>사진 불러오는 중...</div>';
+  grid.innerHTML='';
+  try{
+    const r=await fetch(`/pmis/photos?pjt_cd=${encodeURIComponent(code)}`);const d=await r.json();
+    const valid=(d.photos||[]).filter(p=>p.photo_url);
+    if(!valid.length){stat.textContent='등록된 공정사진이 없습니다.';return;}
+    stat.textContent='총 '+valid.length+'장';
+    grid.innerHTML=valid.map(ph=>`
+      <div class="photo-item" onclick="window.open('${esc(ph.photo_url)}','_blank')">
+        <div class="photo-thumb"><img src="${esc(ph.photo_url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div style=&quot;padding:8px;font-size:11px;color:#9ca3af;&quot;>이미지 오류</div>'" /></div>
+        <div class="photo-meta"><div class="photo-name">${esc(ph.photo_name||'공정사진')}</div><div class="photo-date">📅 ${esc(ph.shot_date||'-')}</div><a class="photo-link" href="${esc(ph.photo_url)}" target="_blank" onclick="event.stopPropagation()">원본보기 🔗</a></div>
+      </div>`).join('');
+  }catch(e){stat.textContent='사진 로딩 실패';}
+}
+
+// ===== 공사정보 보기 =====
+let pjtMap=null, pjtMarker=null, pjtGeocoder=null;
+
+function renderPjtSelect(){
+  const sel=document.getElementById('pjt-select');
+  allProjects.forEach((p,i)=>{
+    const opt=document.createElement('option');opt.value=i;opt.textContent=p.name+(p.gu?' ('+p.gu+')':'');sel.appendChild(opt);
+  });
+}
+
+async function loadPjtInfo(){
+  const idx=document.getElementById('pjt-select').value;
+  if(idx===''){document.getElementById('pjt-empty').style.display='block';document.getElementById('pjt-main').style.display='none';return;}
+  const p=allProjects[idx];
+  document.getElementById('pjt-empty').style.display='none';
+  document.getElementById('pjt-main').style.display='block';
+  // basic info
+  document.getElementById('pi-name').textContent=p.name;
+  const sb=document.getElementById('pi-status');sb.textContent=p.status||'-';sb.className='pjt-badge '+(p.status||'');
+  document.getElementById('pi-dday').textContent=calcDDay(p.end);
+  document.getElementById('pi-amount').textContent=fmtAmt(p.amount);
+  document.getElementById('pi-facility').textContent=p.type||'-';
+  document.getElementById('pi-period').textContent=fmtDate(p.begin)+' ~ '+fmtDate(p.end);
+  const pct=calcProg(p.begin,p.end);
+  document.getElementById('pi-progbar').style.width=pct+'%';
+  document.getElementById('pi-pct').textContent=pct+'%';
+  document.getElementById('pi-loc').textContent=p.addr||'-';
+  document.getElementById('pi-org1').textContent=p.org1||'-';
+  document.getElementById('pi-org2').textContent=p.org2||'-';
+  document.getElementById('pi-org3').textContent=p.org3||'-';
+  // work terms
+  document.getElementById('pi-current').textContent='불러오는 중...';
+  document.getElementById('pi-next').textContent='불러오는 중...';
+  try{const r=await fetch(`/pmis/work_terms?pjt_cd=${encodeURIComponent(p.code)}`);const d=await r.json();
+    document.getElementById('pi-current').innerHTML=d.current||'당기 정보 없음';
+    document.getElementById('pi-next').innerHTML=d.next||'차기 정보 없음';
+  }catch(e){document.getElementById('pi-current').textContent='로딩 실패';}
+  // weather
+  const geo=GU_FALLBACK[p.gu];
+  if(geo){const g=latlon2grid(geo.lon,geo.lat);
+    try{const r=await fetch(`/weather?nx=${g.x}&ny=${g.y}`);const d=await r.json();if(d.success){
+      document.getElementById('pi-t1h').textContent=d.T1H?d.T1H+'℃':'-';
+      document.getElementById('pi-sky').textContent=d.SKY==='1'?'맑음':d.SKY==='3'?'구름많음':d.SKY==='4'?'흐림':'-';
+      document.getElementById('pi-reh').textContent=d.REH?d.REH+'%':'-';
+      document.getElementById('pi-warn').textContent=d.warning||'특보 없음';
+    }}catch(e){}
+  }
+  // map
+  if(window.kakao&&kakao.maps){
+    const container=document.getElementById('pjt-kakao-map');
+    if(!pjtMap||container.childElementCount===0){
+      pjtMap=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(37.5665,126.978),level:5});
+      pjtGeocoder=new kakao.maps.services.Geocoder();
+      pjtMarker=new kakao.maps.Marker({map:pjtMap,position:new kakao.maps.LatLng(37.5665,126.978)});
+    }
+    setTimeout(()=>{try{pjtMap.relayout();}catch(e){}},0);
+    const hint=document.getElementById('pjt-map-hint');
+    if(p.addr&&p.addr!=='-'){
+      pjtGeocoder.addressSearch(p.addr,(res,st)=>{
+        if(st===kakao.maps.services.Status.OK){const pos=new kakao.maps.LatLng(+res[0].y,+res[0].x);pjtMarker.setPosition(pos);pjtMap.setCenter(pos);pjtMap.setLevel(4);if(hint)hint.textContent='주소 기반';}
+        else if(geo){const pos=new kakao.maps.LatLng(geo.lat,geo.lon);pjtMarker.setPosition(pos);pjtMap.setCenter(pos);pjtMap.setLevel(6);}
+      });
+    } else if(geo){const pos=new kakao.maps.LatLng(geo.lat,geo.lon);pjtMarker.setPosition(pos);pjtMap.setCenter(pos);pjtMap.setLevel(6);if(hint)hint.textContent='구 좌표 기반';}
+  }
+  // photos
+  const pstat=document.getElementById('pi-photo-status'),pgrid=document.getElementById('pi-photo-grid');
+  pstat.innerHTML='<div style="display:flex;align-items:center;gap:8px;"><div class="spin"></div>사진 불러오는 중...</div>';
+  pgrid.innerHTML='';
+  try{const r=await fetch(`/pmis/photos?pjt_cd=${encodeURIComponent(p.code)}`);const d=await r.json();
+    const valid=(d.photos||[]).filter(ph=>ph.photo_url);
+    if(!valid.length){pstat.textContent='등록된 공정사진이 없습니다.';return;}
+    pstat.textContent='총 '+valid.length+'장';
+    pgrid.innerHTML=valid.map(ph=>`
+      <div class="photo-item" onclick="window.open('${esc(ph.photo_url)}','_blank')">
+        <div class="photo-thumb"><img src="${esc(ph.photo_url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div style=&quot;padding:8px;font-size:11px;color:#9ca3af;&quot;>이미지 오류</div>'" /></div>
+        <div class="photo-meta"><div class="photo-name">${esc(ph.photo_name||'공정사진')}</div><div class="photo-date">📅 ${esc(ph.shot_date||'-')}</div><a class="photo-link" href="${esc(ph.photo_url)}" target="_blank" onclick="event.stopPropagation()">원본보기 🔗</a></div>
+      </div>`).join('');
+  }catch(e){pstat.textContent='사진 로딩 실패';}
+}
+
+// ===== 새 분석 Wizard =====
+let wizStep=1, wizLoc='', wizCode=null, wizFiles=[], wizDataUrls=[];
+let wizMap=null, wizMarker=null, wizGeocoder=null, wizMapInited=false;
+
+function renderWizSiteList(sites){
+  const el=document.getElementById('wiz-site-list');
+  if(!sites.length){el.innerHTML='<div style="padding:14px;font-size:13px;color:#6b7280;">검색 결과 없음</div>';return;}
+  el.innerHTML=sites.map((s,i)=>{
+    const bc=s.status==='종료'?'done2':s.status==='중지'?'stop':'';
+    return `<div class="site-item" data-idx="${i}" onclick="wizSelectSite(${i})">
+      <div><div class="site-item-name">${esc(s.name||'-')}</div><div class="site-item-meta">${esc(s.gu||'-')} · ${esc(s.type||'-')}</div></div>
+      <span class="site-item-badge ${bc}">${esc(s.status||'진행')}</span></div>`;
+  }).join('');
+}
+
+function wizFilterSites(q){
+  const kw=q.trim().toLowerCase();
+  renderWizSiteList(kw?allProjects.filter(s=>(s.name||'').toLowerCase().includes(kw)||(s.gu||'').includes(kw)):allProjects);
+}
+
+function wizSelectSite(i){
+  document.querySelectorAll('#wiz-site-list .site-item').forEach(el=>el.classList.remove('selected'));
+  document.querySelector(`#wiz-site-list .site-item[data-idx="${i}"]`)?.classList.add('selected');
+  const s=allProjects[i];
+  wizSetLoc(s.name+(s.gu?' ('+s.gu+')':''), s.code);
+}
+
+function wizSetLoc(addr, code){
+  wizLoc=addr; wizCode=code||null;
+  document.getElementById('wiz-loc-text').textContent=addr;
+  document.getElementById('wiz-selected-loc').classList.add('show');
+  document.getElementById('wbtn1').disabled=false;
+}
+
+function toggleWizMap(){
+  const sec=document.getElementById('wiz-map-section');
+  sec.classList.toggle('open');
+  if(sec.classList.contains('open')&&!wizMapInited){
+    wizMapInited=true;
+    if(window.kakao&&kakao.maps)kakao.maps.load(initWizMap);
+  } else if(sec.classList.contains('open')&&wizMap){
+    setTimeout(()=>wizMap.relayout(),50);
+  }
+}
+
+function initWizMap(){
+  if(wizMap)return;
+  const c=document.getElementById('wiz-kakao-map');
+  wizMap=new kakao.maps.Map(c,{center:new kakao.maps.LatLng(37.5665,126.978),level:7});
+  wizGeocoder=new kakao.maps.services.Geocoder();
+  kakao.maps.event.addListener(wizMap,'click',function(e){
+    const ll=e.latLng; wizPlaceMarker(ll);
+    wizGeocoder.coord2Address(ll.getLng(),ll.getLat(),(res,st)=>{
+      if(st===kakao.maps.services.Status.OK){
+        const a=res[0].road_address?res[0].road_address.address_name:res[0].address.address_name;
+        wizSetLoc(a,null); document.getElementById('wiz-loc-input').value=a;
+        document.querySelectorAll('#wiz-site-list .site-item').forEach(el=>el.classList.remove('selected'));
+      }
+    });
+  });
+}
+
+function wizPlaceMarker(ll){if(wizMarker)wizMarker.setMap(null);wizMarker=new kakao.maps.Marker({position:ll,map:wizMap});wizMap.panTo(ll);}
+
+function wizSearchAddr(){
+  const v=document.getElementById('wiz-loc-input').value.trim();
+  if(!v||!wizGeocoder)return;
+  wizGeocoder.addressSearch(v,(res,st)=>{
+    if(st===kakao.maps.services.Status.OK){
+      wizPlaceMarker(new kakao.maps.LatLng(+res[0].y,+res[0].x));wizMap.setLevel(4);
+      const a=res[0].road_address?res[0].road_address.address_name:res[0].address.address_name;
+      wizSetLoc(a,null);
+    } else alert('주소를 찾을 수 없습니다.');
+  });
+}
+
+function wizGo(n){
+  document.getElementById('wpanel'+wizStep).classList.remove('active');
+  document.getElementById('wpanel'+n).classList.add('active');
+  for(let i=1;i<=4;i++){
+    const sc=document.getElementById('wsc'+i),sl=document.getElementById('wsl'+i);
+    if(i<n){sc.className='step-circle done';sc.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg>';}
+    else if(i===n){sc.className='step-circle active';sc.textContent=i;sl.className='step-label active';}
+    else{sc.className='step-circle pending';sc.textContent=i;sl.className='step-label';}
+    if(i<4)document.getElementById('wconn'+i).className='step-connector'+(i<n?' done':'');
+  }
+  wizStep=n;
+  if(n===4)wizFillReview();
+}
+
+function wizHandleFiles(files){
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('image/'))return;
+    wizFiles.push(f);
+    wizSimUpload(f,()=>{const r=new FileReader();r.onload=e=>{wizDataUrls.push(e.target.result);wizAddPreview(e.target.result,wizDataUrls.length-1);document.getElementById('wbtn2').disabled=false;};r.readAsDataURL(f);});
+  });
+}
+
+function wizDrop(e){e.preventDefault();document.getElementById('wiz-upload-zone').classList.remove('drag');wizHandleFiles(e.dataTransfer.files);}
+
+function wizSimUpload(file,cb){
+  const prog=document.getElementById('wiz-file-progress'),inner=document.getElementById('wiz-prog-inner'),pct=document.getElementById('wiz-fpct'),nm=document.getElementById('wiz-fname');
+  prog.classList.add('show');nm.textContent=file.name;let p=0;
+  const iv=setInterval(()=>{p=Math.min(p+Math.random()*20,100);inner.style.width=p+'%';pct.textContent=Math.round(p)+'%';if(p>=100){clearInterval(iv);setTimeout(()=>{prog.classList.remove('show');cb();},300);}},80);
+}
+
+function wizAddPreview(src,idx){
+  const g=document.getElementById('wiz-preview-grid'),item=document.createElement('div');
+  item.className='preview-item';item.innerHTML=`<img src="${src}" /><button class="preview-remove" onclick="wizRemove(${idx},this)">✕</button>`;g.appendChild(item);
+}
+
+function wizRemove(idx,btn){btn.parentElement.remove();wizDataUrls.splice(idx,1);wizFiles.splice(idx,1);if(!wizDataUrls.length)document.getElementById('wbtn2').disabled=true;}
+
+function wizChip(btn,text){btn.classList.toggle('selected');const ta=document.getElementById('wiz-question');ta.value=btn.classList.contains('selected')?(ta.value?ta.value+'\n':'')+text:ta.value.replace('\n'+text,'').replace(text,'').trim();wizUpdateChar(ta);}
+
+function wizUpdateChar(ta){const l=ta.value.length;document.getElementById('wiz-char-cnt').textContent=l;document.getElementById('wbtn3').disabled=l===0;}
+
+function wizFillReview(){
+  document.getElementById('rv-loc').textContent=wizLoc+(wizCode?' [코드: '+wizCode+']':' (직접검색)');
+  document.getElementById('rv-question').textContent=document.getElementById('wiz-question').value||'(입력 안 됨)';
+  const ib=document.getElementById('rv-images');ib.innerHTML='';
+  if(!wizDataUrls.length){ib.innerHTML='<div class="review-img-placeholder">없음</div>';return;}
+  wizDataUrls.forEach(s=>{const d=document.createElement('div');d.className='review-img';d.innerHTML=`<img src="${s}"/>`;ib.appendChild(d);});
+}
+
+function wizRun(){
+  const btn=document.getElementById('btn-run');btn.disabled=true;
+  btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .8s linear infinite"><polyline points="23,4 23,11 16,11"/><path d="M20.49 15a9 9 0 1 1-.07-3"/></svg> 분석 중...';
+  setTimeout(()=>{alert('✅ AI 분석이 완료됐습니다!');btn.disabled=false;btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21 5,3"/></svg> AI 분석 시작';},2500);
+}
+
+// ===== ChatPDF =====
+let pdfSession=null, pdfFile=null, pdfBusy=false;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  // PDF file input
+  document.getElementById('pdf-file-input').addEventListener('change',e=>pdfSelectFile(e.target.files[0]));
+  const dz=document.getElementById('drop-zone');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)pdfSelectFile(f);});
+  document.getElementById('chat-input2').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();pdfAsk();}});
+  // load projects for dashboard
+  loadProjects();
+});
+
+function pdfSelectFile(f){
+  if(!f||!f.name.toLowerCase().endsWith('.pdf')){alert('PDF 파일만 가능합니다.');return;}
+  pdfFile=f;
+  document.getElementById('pdf-file-info').style.display='block';
+  document.getElementById('pdf-fname').textContent=f.name;
+  document.getElementById('pdf-fmeta').textContent='크기: '+(f.size/1024/1024).toFixed(2)+' MB';
+  document.getElementById('pdf-upload-btn').disabled=false;
+  document.getElementById('pdf-status').textContent='파일 선택됨. 분석 시작을 누르세요.';
+  document.getElementById('pdf-status').className='upload-status2';
+}
+
+async function pdfUpload(){
+  if(!pdfFile||pdfBusy)return; pdfBusy=true;
+  const btn=document.getElementById('pdf-upload-btn');btn.disabled=true;btn.textContent='⏳ 분석 중...';
+  document.getElementById('pdf-status').textContent='PDF 분석 중...';
+  const fd=new FormData();fd.append('file',pdfFile);
+  try{
+    const res=await fetch('/api/chatpdf/upload',{method:'POST',body:fd});const d=await res.json();
+    if(!d.success)throw new Error(d.error);
+    pdfSession=d.session_id;
+    document.getElementById('pdf-stats').style.display='block';
+    document.getElementById('pdf-stats').innerHTML=`✅ 완료<br>📄 ${d.page_count}쪽<br>🧩 ${d.chunk_count}청크`;
+    document.getElementById('pdf-status').textContent='분석 완료! 질문해보세요.';document.getElementById('pdf-status').className='upload-status2 ok';
+    document.getElementById('chat-input2').disabled=false;document.getElementById('chat-send-btn').disabled=false;
+    document.getElementById('chat-input2').placeholder='질문을 입력하고 Enter...';
+    document.getElementById('chat-empty2').remove();
+    pdfAppendMsg('bot','📄 분석 완료! 무엇이든 질문해보세요.');
+    btn.textContent='✅ 완료';
+  }catch(e){document.getElementById('pdf-status').textContent='오류: '+e.message;document.getElementById('pdf-status').className='upload-status2 err';btn.disabled=false;btn.textContent='🚀 분석 시작';}
+  finally{pdfBusy=false;}
+}
+
+async function pdfAsk(){
+  if(!pdfSession||pdfBusy)return;
+  const inp=document.getElementById('chat-input2'),q=inp.value.trim();if(!q)return;
+  pdfBusy=true;inp.value='';inp.disabled=true;document.getElementById('chat-send-btn').disabled=true;
+  pdfAppendMsg('user',q);
+  const tid='t'+Date.now();pdfAppendMsg('bot','답변 생성 중...',tid,true);
+  try{
+    const res=await fetch('/api/chatpdf/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:pdfSession,question:q})});
+    const d=await res.json();document.getElementById(tid)?.parentElement.remove();
+    if(!d.success)throw new Error(d.error);pdfAppendMsg('bot',d.answer);
+  }catch(e){document.getElementById(tid)?.parentElement.remove();pdfAppendMsg('bot','⚠️ 오류: '+e.message);}
+  finally{pdfBusy=false;inp.disabled=false;document.getElementById('chat-send-btn').disabled=false;inp.focus();}
+}
+
+function pdfAppendMsg(role,text,id,thinking){
+  const c=document.getElementById('chat-msgs');
+  const w=document.createElement('div');w.style.cssText='display:flex;flex-direction:column;align-items:'+(role==='user'?'flex-end':'flex-start');
+  const l=document.createElement('div');l.className='msg-label';l.textContent=role==='user'?'나':'AI';w.appendChild(l);
+  const b=document.createElement('div');b.className='msg '+role+(thinking?' thinking':'');b.textContent=text;if(id)b.id=id;w.appendChild(b);
+  c.appendChild(w);c.scrollTop=c.scrollHeight;
+}
+</script>
+</body>
+</html>

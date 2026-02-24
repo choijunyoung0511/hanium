@@ -507,5 +507,10 @@ def chatpdf_ask():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/unified")
+def unified():
+    return render_template("unified.html")
+
 if __name__ == "__main__":
     app.run(debug=True)
+
