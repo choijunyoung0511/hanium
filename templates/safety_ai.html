@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SafetyAI – 새 분석</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #2563eb;
+    --blue-light: #eff6ff;
+    --blue-mid: #3b82f6;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --yellow-bg: #fefce8;
+    --sidebar-w: 220px;
+  }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #f1f5f9;
+    min-height: 100vh;
+    margin: 0;
+  }
+
+  /* ── 전체 앱 프레임 ── */
+  .app-frame {
+    width: 100%;
+    min-height: 100vh;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── 상단 헤더 ── */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--gray-200);
+    background: #fff;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--gray-900); }
+  .logo svg { color: var(--blue); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .bell-btn {
+    position: relative; background: none; border: none; cursor: pointer;
+    color: var(--gray-500); padding: 6px;
+  }
+  .bell-dot {
+    position: absolute; top: 4px; right: 4px;
+    width: 8px; height: 8px; background: #ef4444; border-radius: 50%; border: 1.5px solid #fff;
+  }
+  .user-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--gray-100); border-radius: 999px; padding: 6px 12px 6px 6px;
+    font-size: 13px; font-weight: 500; color: var(--gray-700);
+  }
+  .avatar {
+    width: 28px; height: 28px; background: var(--blue); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 12px; font-weight: 700;
+  }
+
+  /* ── 바디 (사이드바 + 콘텐츠) ── */
+  .app-body { display: flex; flex: 1; min-height: calc(100vh - 57px); }
+
+  /* ── 사이드바 ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    border-right: 1px solid var(--gray-200);
+    background: #fff;
+    padding: 16px 0;
+    flex-shrink: 0;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; font-size: 13px; font-weight: 500;
+    color: var(--gray-500); cursor: pointer; transition: background .15s, color .15s;
+    border-radius: 0;
+  }
+  .nav-item:hover { background: var(--gray-50); color: var(--gray-900); }
+  .nav-item.active {
+    background: var(--blue-light); color: var(--blue); font-weight: 600;
+    border-right: 3px solid var(--blue);
+  }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-new {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 12px 8px; padding: 8px 12px;
+    background: var(--blue); color: #fff; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+  }
+  .nav-new:hover { background: #1d4ed8; }
+
+  /* ── 메인 콘텐츠 ── */
+  .main { flex: 1; padding: 40px 60px; overflow-y: auto; }
+
+  .page-title { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+  .page-sub { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+
+  /* ── 스텝 인디케이터 ── */
+  .steps {
+    display: flex; align-items: center;
+    margin: 28px 0 32px; gap: 0;
+  }
+  .step-item { display: flex; align-items: center; gap: 0; flex: 1; }
+  .step-item:last-child { flex: none; }
+  .step-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+    transition: all .3s;
+  }
+  .step-circle.done { background: var(--blue); color: #fff; }
+  .step-circle.active { background: var(--blue); color: #fff; box-shadow: 0 0 0 4px rgba(37,99,235,0.2); }
+  .step-circle.pending { background: var(--gray-100); color: var(--gray-400); border: 2px solid var(--gray-200); }
+  .step-label {
+    font-size: 12px; font-weight: 500; margin-top: 6px; white-space: nowrap;
+    color: var(--gray-500);
+  }
+  .step-label.active { color: var(--blue); font-weight: 700; }
+  .step-connector {
+    flex: 1; height: 2px; background: var(--gray-200); margin: 0 4px;
+    margin-bottom: 20px; transition: background .3s;
+  }
+  .step-connector.done { background: var(--blue); }
+  .step-wrap { display: flex; flex-direction: column; align-items: center; }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--gray-50); border: 1px solid var(--gray-200);
+    border-radius: 12px; padding: 28px 32px;
+  }
+  .card-title { font-size: 17px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+  .card-sub { font-size: 13px; color: var(--gray-500); margin-bottom: 24px; }
+
+  /* ── STEP 1: 위치선택 ── */
+  .location-search {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .location-search input {
+    flex: 1; padding: 10px 14px; border: 1px solid var(--gray-200);
+    border-radius: 8px; font-size: 13px; font-family: inherit;
+    background: #fff; color: var(--gray-900);
+    outline: none; transition: border .15s;
+  }
+  .location-search input:focus { border-color: var(--blue); }
+  .btn-search {
+    padding: 10px 18px; background: var(--blue); color: #fff;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background .15s;
+  }
+  .btn-search:hover { background: #1d4ed8; }
+  #kakao-map { margin-bottom: 16px; }
+  .map-placeholder svg { width: 32px; height: 32px; color: var(--gray-300); }
+
+  /* ── 공사장 목록 ── */
+  .site-search-bar {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .site-search-bar input {
+    flex: 1; padding: 9px 14px; border: 1px solid var(--gray-200);
+    border-radius: 8px; font-size: 13px; font-family: inherit;
+    background: #fff; outline: none; transition: border .15s;
+  }
+  .site-search-bar input:focus { border-color: var(--blue); }
+  .site-list {
+    border: 1px solid var(--gray-200); border-radius: 10px;
+    overflow-y: auto; max-height: 280px; background: #fff; margin-bottom: 14px;
+  }
+  .site-item {
+    padding: 11px 16px; border-bottom: 1px solid var(--gray-100);
+    cursor: pointer; transition: background .12s; display: flex;
+    align-items: center; justify-content: space-between;
+  }
+  .site-item:last-child { border-bottom: none; }
+  .site-item:hover { background: var(--blue-light); }
+  .site-item.selected { background: var(--blue-light); border-left: 3px solid var(--blue); }
+  .site-item-name { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-bottom: 3px; }
+  .site-item-meta { font-size: 11px; color: var(--gray-500); }
+  .site-item-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    background: #dcfce7; color: #15803d; font-weight: 600; flex-shrink: 0; margin-left: 8px;
+  }
+  .site-item-badge.stop { background: #fee2e2; color: #b91c1c; }
+  .site-item-badge.done { background: #e5e7eb; color: #374151; }
+  .site-loading {
+    display: flex; align-items: center; gap: 8px; padding: 20px 16px;
+    font-size: 13px; color: var(--gray-500);
+  }
+  .spin { width: 16px; height: 16px; border: 2px solid var(--gray-200);
+    border-top-color: var(--blue); border-radius: 50%; animation: spinA .7s linear infinite; }
+  @keyframes spinA { to { transform: rotate(360deg); } }
+
+  .map-toggle-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 16px; border: 1px dashed var(--gray-300);
+    border-radius: 8px; background: #fff; color: var(--gray-600);
+    font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+    transition: all .15s; margin-bottom: 14px; width: 100%;
+  }
+  .map-toggle-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+  .map-section { display: none; }
+  .map-section.open { display: block; }
+  #kakao-map { margin-bottom: 12px; }
+
+  .selected-loc {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    background: var(--blue-light); border-radius: 8px; font-size: 13px;
+    color: var(--blue); font-weight: 500; display: none;
+  }
+  .selected-loc.show { display: flex; }
+
+  /* ── STEP 2: 이미지업로드 ── */
+  .upload-zone {
+    border: 2px dashed var(--gray-200); border-radius: 10px;
+    background: #fff; padding: 40px 20px;
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; transition: border-color .2s, background .2s;
+    margin-bottom: 16px;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--blue); background: var(--blue-light); }
+  .upload-icon { color: var(--gray-400); margin-bottom: 12px; }
+  .upload-title { font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+  .upload-hint { font-size: 12px; color: var(--gray-400); margin-bottom: 16px; }
+  .btn-file {
+    padding: 8px 20px; background: var(--blue); color: #fff;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  #file-input { display: none; }
+
+  .file-progress {
+    background: #fff; border: 1px solid var(--gray-200);
+    border-radius: 8px; padding: 12px 16px; display: none;
+  }
+  .file-progress.show { display: block; }
+  .file-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .file-name { font-size: 13px; color: var(--gray-700); font-weight: 500; }
+  .file-pct { font-size: 12px; color: var(--blue); font-weight: 600; }
+  .progress-bar { height: 6px; background: var(--gray-200); border-radius: 999px; overflow: hidden; }
+  .progress-inner {
+    height: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb);
+    border-radius: 999px; width: 0%; transition: width .3s;
+  }
+
+  .preview-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;
+    margin-top: 16px;
+  }
+  .preview-item {
+    aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--gray-200); position: relative;
+  }
+  .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-remove {
+    position: absolute; top: 4px; right: 4px;
+    background: rgba(0,0,0,0.5); color: #fff; border: none;
+    border-radius: 50%; width: 20px; height: 20px; cursor: pointer;
+    font-size: 11px; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── STEP 3: 질문입력 ── */
+  .question-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip {
+    padding: 6px 14px; border: 1px solid var(--gray-200); border-radius: 999px;
+    font-size: 12px; color: var(--gray-600); cursor: pointer; background: #fff;
+    transition: all .15s; font-family: inherit;
+  }
+  .chip:hover, .chip.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .question-textarea {
+    width: 100%; min-height: 120px; padding: 14px;
+    border: 1px solid var(--gray-200); border-radius: 10px;
+    font-size: 13px; font-family: inherit; color: var(--gray-900);
+    background: #fff; resize: vertical; outline: none; transition: border .15s;
+    line-height: 1.6;
+  }
+  .question-textarea:focus { border-color: var(--blue); }
+  .char-count { font-size: 11px; color: var(--gray-400); text-align: right; margin-top: 6px; }
+
+  /* ── STEP 4: 검토 및 실행 ── */
+  .review-section { margin-bottom: 20px; }
+  .review-label { font-size: 12px; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .review-value {
+    background: #fff; border: 1px solid var(--gray-200);
+    border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--gray-700);
+  }
+  .review-images { display: flex; gap: 8px; flex-wrap: wrap; }
+  .review-img {
+    width: 64px; height: 64px; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--gray-200);
+  }
+  .review-img img { width: 100%; height: 100%; object-fit: cover; }
+  .review-img-placeholder {
+    width: 64px; height: 64px; border-radius: 6px;
+    background: var(--gray-100); display: flex; align-items: center;
+    justify-content: center; color: var(--gray-400); font-size: 11px;
+    border: 1px solid var(--gray-200);
+  }
+  .ai-notice {
+    background: var(--blue-light); border: 1px solid #bfdbfe;
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; gap: 10px; align-items: flex-start; margin-bottom: 20px;
+  }
+  .ai-notice svg { color: var(--blue); flex-shrink: 0; margin-top: 2px; }
+  .ai-notice-text { font-size: 13px; color: #1e40af; line-height: 1.5; }
+
+  /* ── 하단 버튼 ── */
+  .footer-btns {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px;
+  }
+  .btn-prev {
+    padding: 10px 24px; background: #fff; color: var(--gray-700);
+    border: 1px solid var(--gray-200); border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-prev:hover { background: var(--gray-50); }
+  .btn-next {
+    padding: 10px 24px; background: var(--blue); color: #fff;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background .15s;
+  }
+  .btn-next:hover { background: #1d4ed8; }
+  .btn-next:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+  .btn-run {
+    padding: 10px 28px; background: #16a34a; color: #fff;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: background .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-run:hover { background: #15803d; }
+
+  .step-panel { display: none; animation: fadeIn .25s ease; }
+  .step-panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f6fbb6112f736fc5a87aecd58fd0ba5b&libraries=services"></script>
+</head>
+<body>
+
+<div class="app-frame">
+  <!-- 헤더 -->
+  <header class="app-header">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      SafetyAI
+    </div>
+    <div class="header-right">
+      <button class="bell-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="bell-dot"></span>
+      </button>
+      <div class="user-chip">
+        <div class="avatar">홍</div>
+        홍길동
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- 사이드바 -->
+    <aside class="sidebar">
+      <div class="nav-new">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        새 분석
+      </div>
+      <div class="nav-item active" onclick="setNav(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        대시보드
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        리포트 히스토리
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        조치 필요 현장
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        지식베이스
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        설정
+      </div>
+    </aside>
+
+    <!-- 메인 -->
+    <main class="main">
+      <div class="page-title">새 분석 시작</div>
+      <div class="page-sub">현장 사진을 업로드하고 AI 분석을 시작하세요</div>
+
+      <!-- 스텝 인디케이터 -->
+      <div class="steps" id="steps">
+        <div class="step-wrap">
+          <div class="step-circle active" id="sc1">1</div>
+          <div class="step-label active" id="sl1">위치 선택</div>
+        </div>
+        <div class="step-connector" id="conn1"></div>
+        <div class="step-wrap">
+          <div class="step-circle pending" id="sc2">2</div>
+          <div class="step-label" id="sl2">이미지 업로드</div>
+        </div>
+        <div class="step-connector" id="conn2"></div>
+        <div class="step-wrap">
+          <div class="step-circle pending" id="sc3">3</div>
+          <div class="step-label" id="sl3">질문 입력</div>
+        </div>
+        <div class="step-connector" id="conn3"></div>
+        <div class="step-wrap">
+          <div class="step-circle pending" id="sc4">4</div>
+          <div class="step-label" id="sl4">검토 및 실행</div>
+        </div>
+      </div>
+
+      <!-- STEP 1: 위치선택 -->
+      <div class="step-panel active" id="panel1">
+        <div class="card">
+          <div class="card-title">현장 위치 선택</div>
+          <div class="card-sub">서울시 건설 현장 목록에서 선택하거나, 없는 경우 지도에서 직접 검색하세요.</div>
+
+          <!-- 공사장 목록 검색 -->
+          <div class="site-search-bar">
+            <input type="text" id="site-filter" placeholder="현장명 또는 구 이름으로 검색..." oninput="filterSites(this.value)" />
+          </div>
+          <div class="site-list" id="site-list">
+            <div class="site-loading"><div class="spin"></div> 공사장 목록 불러오는 중...</div>
+          </div>
+
+          <!-- 지도 직접 검색 토글 -->
+          <button class="map-toggle-btn" onclick="toggleMapSection()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            목록에 없는 현장 – 지도에서 직접 검색
+          </button>
+
+          <!-- 지도 섹션 -->
+          <div class="map-section" id="map-section">
+            <div class="location-search" style="margin-bottom:10px;">
+              <input type="text" id="loc-input" placeholder="주소 또는 현장명 검색" />
+              <button class="btn-search" onclick="selectLocation()">검색</button>
+            </div>
+            <div id="kakao-map" style="width:100%;height:280px;border-radius:10px;border:1px solid var(--gray-200);"></div>
+          </div>
+
+          <div class="selected-loc" id="selected-loc">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span id="loc-text">선택된 위치 없음</span>
+          </div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-next" id="btn-next1" onclick="goStep(2)" disabled>다음 단계</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: 이미지업로드 -->
+      <div class="step-panel" id="panel2">
+        <div class="card">
+          <div class="card-title">현장 사진 업로드</div>
+          <div class="card-sub">분석할 현장의 사진을 업로드해주세요. 여러 장을 한 번에 업로드할 수 있습니다.</div>
+
+          <div class="upload-zone" id="upload-zone"
+               ondragover="event.preventDefault(); this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleDrop(event)"
+               onclick="document.getElementById('file-input').click()">
+            <div class="upload-icon">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polyline points="16,16 12,12 8,16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+              </svg>
+            </div>
+            <div class="upload-title">파일을 드래그하거나 클릭하여 업로드</div>
+            <div class="upload-hint">JPG, PNG, WEBP 파일 지원 (최대 10MB)</div>
+            <button class="btn-file" onclick="event.stopPropagation(); document.getElementById('file-input').click()">파일 선택</button>
+          </div>
+          <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(this.files)" />
+
+          <div class="file-progress" id="file-progress">
+            <div class="file-row">
+              <span class="file-name" id="file-name-label">파일명.png</span>
+              <span class="file-pct" id="file-pct-label">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-inner" id="progress-inner"></div></div>
+          </div>
+
+          <div class="preview-grid" id="preview-grid"></div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-prev" onclick="goStep(1)">이전</button>
+          <button class="btn-next" id="btn-next2" onclick="goStep(3)" disabled>다음 단계</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: 질문입력 -->
+      <div class="step-panel" id="panel3">
+        <div class="card">
+          <div class="card-title">분석 질문 입력</div>
+          <div class="card-sub">AI에게 어떤 내용을 분석해달라고 할지 질문을 입력하세요.</div>
+
+          <div class="question-chips" id="chips">
+            <button class="chip" onclick="addChip(this, '안전모 미착용 여부를 확인해주세요')">🪖 안전모 착용</button>
+            <button class="chip" onclick="addChip(this, '추락 위험 구간을 식별해주세요')">⚠️ 추락 위험</button>
+            <button class="chip" onclick="addChip(this, '화재 위험 요소를 분석해주세요')">🔥 화재 위험</button>
+            <button class="chip" onclick="addChip(this, '안전 장비 착용 상태를 점검해주세요')">🦺 안전 장비</button>
+            <button class="chip" onclick="addChip(this, '현장 정리정돈 상태를 평가해주세요')">📋 정리정돈</button>
+          </div>
+
+          <textarea class="question-textarea" id="question-input"
+            placeholder="예: 이 현장에서 안전 위반 사항이 있는지 확인하고 개선 방안을 제시해주세요."
+            oninput="updateChar(this)"></textarea>
+          <div class="char-count"><span id="char-cnt">0</span> / 500자</div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-prev" onclick="goStep(2)">이전</button>
+          <button class="btn-next" id="btn-next3" onclick="goStep(4)" disabled>다음 단계</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: 검토 및 실행 -->
+      <div class="step-panel" id="panel4">
+        <div class="card">
+          <div class="card-title">분석 정보 검토</div>
+          <div class="card-sub">아래 내용을 확인하고 AI 분석을 시작하세요.</div>
+
+          <div class="review-section">
+            <div class="review-label">📍 위치</div>
+            <div class="review-value" id="rv-loc">-</div>
+          </div>
+          <div class="review-section">
+            <div class="review-label">🖼️ 업로드 사진</div>
+            <div class="review-images" id="rv-images"></div>
+          </div>
+          <div class="review-section">
+            <div class="review-label">❓ 분석 질문</div>
+            <div class="review-value" id="rv-question">-</div>
+          </div>
+
+          <div class="ai-notice">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <div class="ai-notice-text">AI가 업로드된 사진과 질문을 바탕으로 안전 위험 요소를 분석합니다. 분석에는 약 30초~2분이 소요될 수 있습니다.</div>
+          </div>
+        </div>
+        <div class="footer-btns">
+          <button class="btn-prev" onclick="goStep(3)">이전</button>
+          <button class="btn-run" onclick="runAnalysis()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="5,3 19,12 5,21 5,3"/>
+            </svg>
+            AI 분석 시작
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  let currentStep = 1;
+  let selectedLocation = '';
+  let selectedSiteCode = null;
+  let uploadedFiles = [];
+  let uploadedDataUrls = [];
+
+  function setNav(el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function goStep(n) {
+    // 패널 전환
+    document.getElementById('panel' + currentStep).classList.remove('active');
+    document.getElementById('panel' + n).classList.add('active');
+
+    // 스텝 인디케이터 업데이트
+    for (let i = 1; i <= 4; i++) {
+      const sc = document.getElementById('sc' + i);
+      const sl = document.getElementById('sl' + i);
+      if (i < n) {
+        sc.className = 'step-circle done';
+        sc.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg>`;
+        sl.className = 'step-label';
+      } else if (i === n) {
+        sc.className = 'step-circle active';
+        sc.textContent = i;
+        sl.className = 'step-label active';
+      } else {
+        sc.className = 'step-circle pending';
+        sc.textContent = i;
+        sl.className = 'step-label';
+      }
+      if (i < 4) {
+        document.getElementById('conn' + i).className = 'step-connector' + (i < n ? ' done' : '');
+      }
+    }
+
+    currentStep = n;
+    if (n === 4) fillReview();
+  }
+
+  // ── STEP 1: 공사장 목록 + 카카오맵 ──
+  const SEOUL_KEY = "756f586a5065647738337a4e77576e";
+  let allSites = [];
+  let kakaoMap = null;
+  let kakaoMarker = null;
+  let kakaoGeocoder = null;
+  let mapInited = false;
+
+  // 공사장 목록 API 로드
+  async function loadSiteList() {
+    try {
+      const url = `http://openapi.seoul.go.kr:8088/${SEOUL_KEY}/xml/pmisPjtList/1/40/`;
+      const res = await fetch(url);
+      const text = await res.text();
+      const xml = new DOMParser().parseFromString(text, 'text/xml');
+      const rows = Array.from(xml.getElementsByTagName('row'));
+      allSites = rows.map(row => {
+        const g = tag => { const el = row.getElementsByTagName(tag)[0]; return el ? (el.textContent || '').trim() : ''; };
+        return {
+          code: g('PJT_CD'), name: g('PJT_NAME'),
+          gu: g('GU_NAME'), type: g('FCT_F6_NM'),
+          status: g('PJT_FIN_YN_NM'), addr: g('OFFICE_ADDR'),
+          begin: g('PJT_BGN1_DATE'), end: g('PJT_COMPL_PREARR_DATE'),
+        };
+      });
+      renderSiteList(allSites);
+    } catch(e) {
+      document.getElementById('site-list').innerHTML =
+        '<div style="padding:16px;font-size:13px;color:#ef4444;">목록 로딩 실패: ' + e.message + '</div>';
+    }
+  }
+
+  function renderSiteList(sites) {
+    const el = document.getElementById('site-list');
+    if (!sites.length) { el.innerHTML = '<div style="padding:16px;font-size:13px;color:#6b7280;">검색 결과가 없습니다.</div>'; return; }
+    el.innerHTML = sites.map((s, i) => {
+      const badgeClass = s.status === '종료' ? 'done' : s.status === '중지' ? 'stop' : '';
+      return `<div class="site-item" data-idx="${i}" onclick="selectSite(${i})">
+        <div>
+          <div class="site-item-name">${s.name || '-'}</div>
+          <div class="site-item-meta">${s.gu || '-'} · ${s.type || '-'}${s.addr ? ' · ' + s.addr : ''}</div>
+        </div>
+        <span class="site-item-badge ${badgeClass}">${s.status || '진행'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function filterSites(q) {
+    const kw = q.trim().toLowerCase();
+    const filtered = kw ? allSites.filter(s =>
+      (s.name || '').toLowerCase().includes(kw) || (s.gu || '').includes(kw)
+    ) : allSites;
+    renderSiteList(filtered);
+  }
+
+  function selectSite(idx) {
+    // 기존 선택 해제
+    document.querySelectorAll('.site-item').forEach(el => el.classList.remove('selected'));
+    const itemEl = document.querySelector(`.site-item[data-idx="${idx}"]`);
+    if (itemEl) itemEl.classList.add('selected');
+
+    const s = allSites[idx];
+    const label = s.name + (s.gu ? ' (' + s.gu + ')' : '');
+    setSelectedLocation(label, s.code);
+  }
+
+  function setSelectedLocation(addr, code) {
+    selectedLocation = addr;
+    selectedSiteCode = code || null;
+    document.getElementById('loc-text').textContent = addr;
+    document.getElementById('selected-loc').classList.add('show');
+    document.getElementById('btn-next1').disabled = false;
+  }
+
+  // 지도 섹션 토글
+  function toggleMapSection() {
+    const sec = document.getElementById('map-section');
+    sec.classList.toggle('open');
+    if (sec.classList.contains('open') && !mapInited) {
+      mapInited = true;
+      if (window.kakao && kakao.maps) kakao.maps.load(initKakaoMap);
+    } else if (sec.classList.contains('open') && kakaoMap) {
+      setTimeout(() => kakaoMap.relayout(), 50);
+    }
+  }
+
+  function initKakaoMap() {
+    if (kakaoMap) return;
+    const container = document.getElementById('kakao-map');
+    kakaoMap = new kakao.maps.Map(container, { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 7 });
+    kakaoGeocoder = new kakao.maps.services.Geocoder();
+    kakao.maps.event.addListener(kakaoMap, 'click', function(mouseEvent) {
+      const latlng = mouseEvent.latLng;
+      placeMarker(latlng);
+      kakaoGeocoder.coord2Address(latlng.getLng(), latlng.getLat(), function(result, status) {
+        if (status === kakao.maps.services.Status.OK) {
+          const addr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
+          setSelectedLocation(addr, null);
+          document.getElementById('loc-input').value = addr;
+          // 목록 선택 해제
+          document.querySelectorAll('.site-item').forEach(el => el.classList.remove('selected'));
+        }
+      });
+    });
+  }
+
+  function placeMarker(latlng) {
+    if (kakaoMarker) kakaoMarker.setMap(null);
+    kakaoMarker = new kakao.maps.Marker({ position: latlng, map: kakaoMap });
+    kakaoMap.panTo(latlng);
+  }
+
+  function selectLocation() {
+    const val = document.getElementById('loc-input').value.trim();
+    if (!val || !kakaoGeocoder) return;
+    kakaoGeocoder.addressSearch(val, function(result, status) {
+      if (status === kakao.maps.services.Status.OK) {
+        const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+        placeMarker(coords);
+        kakaoMap.setLevel(4);
+        const addr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
+        setSelectedLocation(addr, null);
+        document.querySelectorAll('.site-item').forEach(el => el.classList.remove('selected'));
+      } else {
+        alert('주소를 찾을 수 없습니다.\n예) 서울시 강남구 테헤란로 152');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadSiteList();
+    const locInput = document.getElementById('loc-input');
+    if (locInput) locInput.addEventListener('keydown', e => { if (e.key === 'Enter') selectLocation(); });
+  });
+
+  // STEP 2
+  function handleFiles(files) {
+    const arr = Array.from(files);
+    arr.forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      uploadedFiles.push(file);
+      simulateUpload(file, () => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          uploadedDataUrls.push(e.target.result);
+          addPreview(e.target.result, uploadedDataUrls.length - 1);
+          document.getElementById('btn-next2').disabled = false;
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('drag');
+    handleFiles(e.dataTransfer.files);
+  }
+
+  function simulateUpload(file, cb) {
+    const prog = document.getElementById('file-progress');
+    const inner = document.getElementById('progress-inner');
+    const pct = document.getElementById('file-pct-label');
+    const nm = document.getElementById('file-name-label');
+    prog.classList.add('show');
+    nm.textContent = file.name;
+    let p = 0;
+    const iv = setInterval(() => {
+      p = Math.min(p + Math.random() * 20, 100);
+      inner.style.width = p + '%';
+      pct.textContent = Math.round(p) + '%';
+      if (p >= 100) { clearInterval(iv); setTimeout(() => { prog.classList.remove('show'); cb(); }, 300); }
+    }, 80);
+  }
+
+  function addPreview(src, idx) {
+    const grid = document.getElementById('preview-grid');
+    const item = document.createElement('div');
+    item.className = 'preview-item';
+    item.innerHTML = `<img src="${src}" /><button class="preview-remove" onclick="removePreview(${idx}, this)">✕</button>`;
+    grid.appendChild(item);
+  }
+
+  function removePreview(idx, btn) {
+    btn.parentElement.remove();
+    uploadedDataUrls.splice(idx, 1);
+    uploadedFiles.splice(idx, 1);
+    if (uploadedDataUrls.length === 0) document.getElementById('btn-next2').disabled = true;
+  }
+
+  // STEP 3
+  function addChip(btn, text) {
+    btn.classList.toggle('selected');
+    const ta = document.getElementById('question-input');
+    if (btn.classList.contains('selected')) {
+      ta.value = (ta.value ? ta.value + '\n' : '') + text;
+    } else {
+      ta.value = ta.value.replace('\n' + text, '').replace(text, '').trim();
+    }
+    updateChar(ta);
+  }
+
+  function updateChar(ta) {
+    const len = ta.value.length;
+    document.getElementById('char-cnt').textContent = len;
+    document.getElementById('btn-next3').disabled = len === 0;
+  }
+
+  // STEP 4
+  function fillReview() {
+    document.getElementById('rv-loc').textContent = selectedLocation + (selectedSiteCode ? '  [코드: ' + selectedSiteCode + ']' : ' (직접 검색)') || '(선택 안 됨)';
+    document.getElementById('rv-question').textContent = document.getElementById('question-input').value || '(입력 안 됨)';
+    const imgBox = document.getElementById('rv-images');
+    imgBox.innerHTML = '';
+    if (uploadedDataUrls.length === 0) {
+      imgBox.innerHTML = '<div class="review-img-placeholder">없음</div>';
+    } else {
+      uploadedDataUrls.forEach(src => {
+        const d = document.createElement('div');
+        d.className = 'review-img';
+        d.innerHTML = `<img src="${src}" />`;
+        imgBox.appendChild(d);
+      });
+    }
+  }
+
+  function runAnalysis() {
+    const btn = document.querySelector('.btn-run');
+    btn.disabled = true;
+    btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .8s linear infinite"><polyline points="23,4 23,11 16,11"/><path d="M20.49 15a9 9 0 1 1-.07-3"/></svg> 분석 중...`;
+    setTimeout(() => {
+      alert('✅ AI 분석이 완료되었습니다!\n리포트 히스토리에서 결과를 확인하세요.');
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21 5,3"/></svg> AI 분석 시작`;
+    }, 2500);
+  }
+
+  // CSS 스피너
+  const style = document.createElement('style');
+  style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+  document.head.appendChild(style);
+</script>
+</body>
+</html>
