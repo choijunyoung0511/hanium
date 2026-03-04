@@ -508,7 +508,8 @@ def chatpdf_ask():
 
 @app.route("/")
 def index():
-    return render_template("safety_ai.html")
+    return render_template("unified.html")
+
 if __name__ == "__main__":
     app.run(debug=True)
 
