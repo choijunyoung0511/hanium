@@ -504,8 +504,6 @@ def chatpdf_ask():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-
-
 @app.route("/")
 def index():
     return render_template("unified.html")
