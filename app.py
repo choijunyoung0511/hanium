@@ -508,6 +508,10 @@ def chatpdf_ask():
 def index():
     return render_template("unified.html")
 
+@app.route("/unified")
+def unified():
+    return render_template("unified.html")
+
 if __name__ == "__main__":
     app.run(debug=True)
 
