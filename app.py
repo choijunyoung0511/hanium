@@ -134,9 +134,6 @@ def seoul_openapi_xml(service_name: str, start: int, end: int, *path_parts):
 # =========================================================
 # 라우트
 # =========================================================
-@app.route("/")
-def index():
-    return render_template("index.html")
 
 @app.route("/poet")
 def poet_page():
@@ -506,6 +503,10 @@ def chatpdf_ask():
         print("[ChatPDF ask error]", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+@app.route("/")
+def index():
+    return render_template("unified.html")
 
 @app.route("/unified")
 def unified():
